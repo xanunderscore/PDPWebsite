@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "UniversalisBot": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53135;http://localhost:53136"
+    }
+  }
+}
