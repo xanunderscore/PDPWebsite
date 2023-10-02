@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "UniversalisBot": {
+    "PDPWebsite": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
