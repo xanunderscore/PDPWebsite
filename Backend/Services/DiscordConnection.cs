@@ -6,24 +6,26 @@ using Newtonsoft.Json;
 using PDPWebsite.Universalis;
 using PDPWebsite.Universalis.Models;
 using SkiaSharp;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace PDPWebsite.Services;
 
 public class DiscordConnection : IDisposable
 {
     public static UniversalisClient UniversalisClient { get; private set; } = null!;
-    public static DiscordSocketClient DiscordClient { get; private set; } = null!;
+    public DiscordSocketClient DiscordClient { get; }
     private static SocketTextChannel _errorChannel = null!;
     private EnvironmentContainer _environmentContainer;
     private readonly ILogger _logger;
     private const string ItemCountLeft = "With %d more";
     private const string Gil = "<:gil:1077843055941533768>";
+    private CancellationTokenSource _cts = new();
     private List<Game> Games { get; } = new()
     {
         new("Universalis", ActivityType.Watching),
         new("with the market"),
         new("with the economy"),
-
     };
 
     public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer)
@@ -70,6 +72,28 @@ public class DiscordConnection : IDisposable
         }, arg.Exception, arg.Message);
     }
 
+    public async Task SetActivity()
+    {
+        try
+        {
+            if (DiscordClient.ConnectionState != ConnectionState.Connected)
+            {
+                if (_cts.IsCancellationRequested)
+                    return;
+                await Task.Delay(1000, _cts.Token);
+                SetActivity();
+            }
+
+            var next = Games[Random.Shared.Next(Games.Count)];
+            await DiscordClient.SetActivityAsync(next);
+            await Task.Delay(60000, _cts.Token);
+            SetActivity();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
     private async Task Ready()
     {
         try
@@ -89,7 +113,7 @@ public class DiscordConnection : IDisposable
             await Log(new LogMessage(LogSeverity.Error, "UniversalisBot", json, exception));
         }
 
-        await DiscordClient.SetActivityAsync(new Game("Universalis", ActivityType.Watching));
+        SetActivity();
         _errorChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
 
         var commandBuilder = new SlashCommandBuilder()
@@ -353,6 +377,7 @@ public class DiscordConnection : IDisposable
 
     public async Task DisposeAsync()
     {
+        _cts.Cancel();
         await DiscordClient.StopAsync();
         await DiscordClient.LogoutAsync();
         await DiscordClient.DisposeAsync();
@@ -361,6 +386,6 @@ public class DiscordConnection : IDisposable
 
     public void Dispose()
     {
-        DisposeAsync().GetAwaiter().GetResult();;
+        DisposeAsync().GetAwaiter().GetResult();
     }
 }

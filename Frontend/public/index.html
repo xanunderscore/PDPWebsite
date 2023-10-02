@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Phoenix down project resources." />
+    <meta name="theme-color" content="#481e9e" />
+    <base href="/" />
+    <link href='https://fonts.googleapis.com/css?family=Noto Sans' rel='stylesheet'>
+
+    <title>PDP</title>
+    <style>
+        :root {
+            --app-background-color: #242424;
+            --dynamic-title-color: #fff;
+            --footer: #282828;
+            --white: #363636;
+            --theme: #481e9e;
+            --black: #fff;
+            --text: #fff;
+            --transparent-white: hsla(0, 0%, 100%, 0.4392156862745098);
+            --transparent-white-darker: hsla(0, 0%, 100%, 0.4392156862745098);
+            --transparent-black: rgba(0, 0, 0, 0.4392156862745098);
+            --transparent-black-darker: rgba(0, 0, 0, 0.4392156862745098);
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: Noto Sans, sans-serif;
+            font-size: 18px;
+            color: var(--text);
+        }
+
+        #fill {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -100000;
+            height: 100%;
+            width: 100%;
+            background-color: var(--app-background-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root" style="min-height: 100vh;display:flex;flex-direction: column;"></div>
+
+    <noscript>
+        You need to enable JavaScript to run this app.
+    </noscript>
+    <div id="fill"></div>
+</body>
+
+</html>

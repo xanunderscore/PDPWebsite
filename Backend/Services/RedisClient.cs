@@ -5,6 +5,8 @@ namespace PDPWebsite.Services;
 
 public class RedisClient
 {
+    private static TimeSpan expireConstant = new(7, 0, 0, 0);
+
     public ConnectionMultiplexer Connection { get; set; } = ConnectionMultiplexer.Connect("localhost");
 
     private IDatabase GetDatabase() => Connection.GetDatabase();
@@ -15,10 +17,10 @@ public class RedisClient
         return db.StringGet(key);
     }
 
-    public void Set(string key, string value)
+    public void Set(string key, string value, TimeSpan? expire = null)
     {
         var db = GetDatabase();
-        db.StringSet(key, value);
+        db.StringSet(key, value, expire ?? expireConstant);
     }
 
     public T? GetObj<T>(string key)
@@ -27,9 +29,16 @@ public class RedisClient
         return db.JSON().Get<T>(key);
     }
 
-    public void SetObj<T>(string key, T value) where T : notnull
+    public void SetObj<T>(string key, T value, TimeSpan? expire = null) where T : notnull
     {
         var db = GetDatabase();
         db.JSON().Set(key, "$", value);
+        SetExpire(key, expire ?? expireConstant);
+    }
+
+    public void SetExpire(string key, TimeSpan timeSpan)
+    {
+        var db = GetDatabase();
+        db.KeyExpire(key, timeSpan);
     }
 }
