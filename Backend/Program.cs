@@ -22,7 +22,8 @@ var app = builder.Build();
 app.UseCors();
 app.UseStaticFiles();
 app.UseSpaStaticFiles();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 await app.Services.GetRequiredService<DiscordConnection>().Start();
