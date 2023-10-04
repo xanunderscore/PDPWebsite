@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Net.WebSockets;
+using System.Text;
 using Discord;
 using Discord.Net;
 using Discord.WebSocket;
@@ -57,6 +58,8 @@ public class DiscordConnection : IDisposable
 
     public async Task Log(LogMessage arg)
     {
+        if (arg.Exception is WebSocketException)
+            return;
         if (arg.Exception != null)
             await SendError(arg.Exception);
 

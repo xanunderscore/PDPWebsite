@@ -4,7 +4,7 @@ using PDPWebsite.Models;
 
 namespace PDPWebsite.Controllers;
 
-[ApiController]
+[ApiController, CorsHeader]
 public class AuthController : ControllerBase
 {
     private readonly RedisClient _rClient;
@@ -17,8 +17,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost]
-    [Route("api/auth/login")]
-    public async Task<IActionResult> Login([FromQuery] ulong userId)
+    [Route("/api/auth/login")]
+    public async Task<IActionResult> Login(ulong userId)
     {
         var roles = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(userId).Roles;
         var isHostOrAdmin = roles.Any(r => r.Id == 1065662664434516069 || r.Permissions.Has(GuildPermission.ManageChannels));
@@ -33,7 +33,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost]
-    [Route("api/auth/refresh")]
+    [Route("/api/auth/refresh")]
     public async Task<IActionResult> Refresh([FromQuery] Guid token)
     {
         var loginRecord = _rClient.GetObj<Login>(token.ToString());
@@ -47,11 +47,12 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
+        _rClient.SetExpire(token.ToString(), TimeSpan.FromDays(7));
         return Ok(token);
     }
 
     [HttpDelete]
-    [Route("api/auth/logout")]
+    [Route("/api/auth/logout")]
     public async Task<IActionResult> Logout([FromQuery] Guid token)
     {
         var loginRecord = _rClient.GetObj<Login>(token.ToString());
