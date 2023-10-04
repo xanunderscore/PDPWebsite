@@ -1,10 +1,8 @@
 ﻿using Discord;
-using Microsoft.AspNetCore.Mvc;
-using PDPWebsite.Models;
 
 namespace PDPWebsite.Controllers;
 
-[ApiController, CorsHeader]
+[ApiController]
 public class AuthController : ControllerBase
 {
     private readonly RedisClient _rClient;
@@ -16,7 +14,7 @@ public class AuthController : ControllerBase
         _discord = discord;
     }
 
-    [HttpPost]
+    [HttpGet]
     [Route("/api/auth/login")]
     public async Task<IActionResult> Login(ulong userId)
     {
@@ -29,14 +27,15 @@ public class AuthController : ControllerBase
         var token = Guid.NewGuid();
         var loginRecord = new Login(token, userId);
         _rClient.SetObj(token.ToString(), loginRecord);
-        return Ok(token);
+        return Ok(token.ToString());
     }
 
     [HttpPost]
     [Route("/api/auth/refresh")]
-    public async Task<IActionResult> Refresh([FromQuery] Guid token)
+    public async Task<IActionResult> Refresh()
     {
-        var loginRecord = _rClient.GetObj<Login>(token.ToString());
+        var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
+        var loginRecord = _rClient.GetObj<Login>(token);
         if (loginRecord is null)
         {
             return Unauthorized();
@@ -47,20 +46,21 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
-        _rClient.SetExpire(token.ToString(), TimeSpan.FromDays(7));
+        _rClient.SetExpire(token, TimeSpan.FromDays(7));
         return Ok(token);
     }
 
     [HttpDelete]
     [Route("/api/auth/logout")]
-    public async Task<IActionResult> Logout([FromQuery] Guid token)
+    public async Task<IActionResult> Logout()
     {
-        var loginRecord = _rClient.GetObj<Login>(token.ToString());
+        var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
+        var loginRecord = _rClient.GetObj<Login>(token);
         if (loginRecord is null)
         {
             return Unauthorized();
         }
-        _rClient.SetExpire(token.ToString(), TimeSpan.Zero);
+        _rClient.SetExpire(token, TimeSpan.Zero);
         return Ok();
     }
 }

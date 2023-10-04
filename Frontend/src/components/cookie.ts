@@ -3,7 +3,7 @@
  * @param name The name of the cookie
  * @returns The value and ttl of the cookie
  */
-export function getCookie(name: string) {
+export function getCookie(name: string): { value: string, ttl: Date } | undefined {
     let cookieString = document.cookie.split(";");
     let cookies: { [name: string]: { value: string, ttl: Date } } = {};
     for (let cookie of cookieString.filter(t => t && !t[0].includes("_expire"))) {

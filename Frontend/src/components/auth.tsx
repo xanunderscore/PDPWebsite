@@ -17,17 +17,17 @@ export function AuthProvider(props: any) {
 
     async function login(uid: string) {
         var resp = await request("/api/auth/login?userId=" + uid, {
-            method: "POST"
+            method: "GET"
         });
         if (resp.status !== 200) {
             throw new Error("Failed to login");
         }
         var token = await resp.text();
-        setUser(token.substring(1, token.length - 1));
+        setUser(token);
     }
 
     async function logout() {
-        var resp = await request("/api/auth/logout?token=" + user, {
+        var resp = await request("/api/auth/logout", {
             method: "DELETE"
         });
         if (resp.status !== 200) {

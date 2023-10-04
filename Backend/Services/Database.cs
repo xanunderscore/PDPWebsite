@@ -3,9 +3,9 @@ using PDPWebsite.Models;
 
 namespace PDPWebsite.Services;
 
-public class DB : DbContext
+public class Database : DbContext
 {
-    public DB(DbContextOptions<DB> options) : base(options)
+    public Database(DbContextOptions<Database> options) : base(options)
     {
 
     }

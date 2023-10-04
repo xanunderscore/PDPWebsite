@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using NLog.Web;
 
 var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
@@ -11,15 +12,41 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllers();
+builder.Services.AddRouting(o => o.LowercaseUrls = true);
 builder.Services.AddCors();
 if (!builder.Environment.IsDevelopment())
     builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "src");
 builder.Services.AddSingleton<EnvironmentContainer>();
 builder.Services.AddSingleton<DiscordConnection>();
 builder.Services.AddSingleton<RedisClient>();
-builder.Services.AddDbContext<DB>(conf => conf.UseNpgsql("Database=PDP"));
-builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<Database>(conf => conf.UseNpgsql("Database=pdp;Username=postgres;Password=postgres;Host=localhost;"));
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Version = "v1", Description = "PDPWebsite API surface" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"GUID Token of the current logged in discord user",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] { }
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -30,11 +57,17 @@ if (!app.Environment.IsDevelopment())
     app.UseSpaStaticFiles();
 }
 app.UseRouting();
-app.UseCors(o => o.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+app.UseMiddleware<CorsMiddleware>();
+app.UseMiddleware<AuthMiddleware>();
+app.UseMiddleware<OptionsMiddleware>();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller}/{action=Index}/{id?}");
 await app.Services.GetRequiredService<DiscordConnection>().Start();
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<Database>().Database.MigrateAsync();
+}
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -48,15 +81,3 @@ if (!app.Environment.IsDevelopment())
 app.Run();
 
 LogManager.Shutdown();
-
-public class CorsHeaderAttribute : ActionFilterAttribute
-{
-    public override void OnResultExecuting(ResultExecutingContext context)
-    {
-        context.HttpContext.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-        context.HttpContext.Response.Headers.Add("Access-Control-Allow-Headers", "*");
-        context.HttpContext.Response.Headers.Add("Access-Control-Allow-Methods", "*");
-
-        base.OnResultExecuting(context);
-    }
-}
