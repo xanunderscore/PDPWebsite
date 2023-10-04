@@ -17,11 +17,13 @@ function Index() {
             <AuthProvider>
                 <Header />
                 <Suspense fallback={<Loader />}>
-                    <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/logout" element={<Logout />} />
-                    </Routes>
+                    <div className="fill-page">
+                        <Routes>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/logout" element={<Logout />} />
+                        </Routes>
+                    </div>
                 </Suspense>
                 <Slideshow />
             </AuthProvider>
