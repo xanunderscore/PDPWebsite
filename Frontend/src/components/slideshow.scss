@@ -1,0 +1,39 @@
+.slideshow-container {
+    z-index: -9999;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        background-color: rgba(0, 0, 0, 0.25);
+    }
+
+    .slideshow-image {
+        position: absolute;
+        background-attachment: fixed;
+        background-size: cover;
+        background-position: center;
+        filter: blur(2.5px);
+        height: 102vh;
+        width: 102vw;
+        top: -1vh;
+        left: -1vw;
+        transition: opacity .25s ease-in-out;
+        opacity: 1;
+
+        &.hidden {
+            opacity: 0;
+        }
+    }
+}

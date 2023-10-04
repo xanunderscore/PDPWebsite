@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from './auth';
-import "./partials.scss";
 
 export function Header() {
     const auth = useAuth();
 
     return (
-        <nav className='navbar navbar-expand-lg bg-body-tertiary navbar-shadow-bottom'>
+        <nav className='navbar navbar-expand-lg bg-body-tertiary'>
             <div className='container-fluid'>
                 <Link to="/" className='navbar-brand'>PDP</Link>
                 <div className='collapse navbar-collapse'>

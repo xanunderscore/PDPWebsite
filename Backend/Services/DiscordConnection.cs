@@ -1,4 +1,4 @@
-﻿using System.Net.WebSockets;
+using System.Net.WebSockets;
 using System.Text;
 using Discord;
 using Discord.Net;
@@ -390,5 +390,46 @@ public class DiscordConnection : IDisposable
     public void Dispose()
     {
         DisposeAsync().GetAwaiter().GetResult();
+    }
+}
+
+static class DiscordExtensions
+{
+    public static async Task DownloadAllImages(this DiscordSocketClient client, ulong id)
+    {
+        var victoryPoses = (SocketTextChannel)await client.GetChannelAsync(id);
+        var messages = await victoryPoses.GetMessagesAsync(1000).FlattenAsync();
+        foreach (var message in messages)
+        {
+            foreach (var messageAttachment in message.Attachments)
+            {
+                var filenameFiltered = messageAttachment.Filename.Replace("SPOILER_", "");
+                var name = !filenameFiltered.StartsWith("image") ? filenameFiltered : message.Id + "_" + filenameFiltered;
+                await using var stream = new MemoryStream();
+                await messageAttachment.DownloadAsync(stream);
+                var path = Path.Combine("victoryposes", name);
+                if (messageAttachment.IsSpoiler())
+                {
+                    path = Path.Combine("victoryposes", "spoilers", name);
+                }
+                path = Path.Combine(Directory.GetCurrentDirectory(), path);
+                var dir = Path.GetDirectoryName(path)!;
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                if (File.Exists(path))
+                    File.Delete(path);
+                await using var fileStream = File.Create(path);
+                await stream.CopyToAsync(fileStream);
+                fileStream.Flush();
+            }
+        }
+    }
+
+    public static async Task DownloadAsync(this IAttachment attachment, Stream stream)
+    {
+        using var client = new HttpClient();
+        var response = await client.GetAsync(attachment.Url);
+        await response.Content.CopyToAsync(stream);
+        stream.Position = 0;
     }
 }

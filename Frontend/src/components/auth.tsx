@@ -41,7 +41,7 @@ export function AuthProvider(props: any) {
         if (k) {
             setUser(k.value);
         }
-    });
+    }, [setUser]);
 
     useEffect(() => {
         if (user) {
