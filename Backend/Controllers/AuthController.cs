@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.WebSocket;
 
 namespace PDPWebsite.Controllers;
 
@@ -18,19 +19,38 @@ public class AuthController : ControllerBase
     [Route("/api/auth/login")]
     public async Task<IActionResult> Login(ulong userId)
     {
-        var roles = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(userId).Roles;
-        var isHostOrAdmin = roles.Any(r => r.Id == 1065662664434516069 || r.Permissions.Has(GuildPermission.ManageChannels));
-        if (!isHostOrAdmin)
+        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(userId);
+        var isAllowed = user.TryGetHighestRole(out _);
+        if (!isAllowed)
         {
             return Unauthorized();
         }
         var token = Guid.NewGuid();
         var loginRecord = new Login(token, userId);
         _rClient.SetObj(token.ToString(), loginRecord);
-        return Ok(token.ToString());
+        return Ok(UserReturn.FromUser(user, token.ToString()));
     }
 
-    [HttpPost]
+    [HttpGet, ServiceFilter(typeof(AuthFilter))]
+    [Route("/api/auth/me")]
+    public async Task<IActionResult> Me()
+    {
+        var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
+        var loginRecord = _rClient.GetObj<Login>(token);
+        if (loginRecord is null)
+        {
+            return Unauthorized();
+        }
+        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(loginRecord.DiscordId);
+        var isAllowed = user.TryGetHighestRole(out _);
+        if (!isAllowed)
+        {
+            return Unauthorized();
+        }
+        return Ok(UserReturn.FromUser(user, token));
+    }
+
+    [HttpPost, ServiceFilter(typeof(AuthFilter))]
     [Route("/api/auth/refresh")]
     public async Task<IActionResult> Refresh()
     {
@@ -40,21 +60,20 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
-        var roles = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(loginRecord.DiscordId).Roles;
-        var isHostOrAdmin = roles.Any(r => r.Id == 1065662664434516069 || r.Permissions.Has(GuildPermission.ManageChannels));
-        if (!isHostOrAdmin)
+        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(loginRecord.DiscordId);
+        var isAllowed = user.TryGetHighestRole(out _);
+        if (!isAllowed)
         {
             return Unauthorized();
         }
         _rClient.SetExpire(token, TimeSpan.FromDays(7));
-        return Ok(token);
+        return Ok(UserReturn.FromUser(user, token));
     }
 
     [HttpDelete]
     [Route("/api/auth/logout")]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(string token)
     {
-        var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
         if (loginRecord is null)
         {
@@ -62,5 +81,14 @@ public class AuthController : ControllerBase
         }
         _rClient.SetExpire(token, TimeSpan.Zero);
         return Ok();
+    }
+}
+
+public record UserReturn(ulong Id, string Name, string AvatarUrl, string Role, string Token)
+{
+    public static UserReturn FromUser(SocketGuildUser user, string token)
+    {
+        user.TryGetHighestRole(out var role);
+        return new UserReturn(user.Id, user.DisplayName, user.GetAvatarUrl(), role!.Name, token);
     }
 }

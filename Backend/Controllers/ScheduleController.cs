@@ -1,8 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿namespace PDPWebsite.Controllers;
 
-namespace PDPWebsite.Controllers;
-
-[ApiController]
+[ApiController, ServiceFilter(typeof(AuthFilter))]
 [Route("/api/[controller]/")]
 public class ScheduleController : ControllerBase
 {

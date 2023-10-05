@@ -16,6 +16,7 @@ public class DiscordConnection : IDisposable
 {
     public static UniversalisClient UniversalisClient { get; private set; } = null!;
     public DiscordSocketClient DiscordClient { get; }
+    public SocketGuild? Guild { get; private set; }
     private static SocketTextChannel _errorChannel = null!;
     private EnvironmentContainer _environmentContainer;
     private readonly ILogger _logger;
@@ -118,6 +119,7 @@ public class DiscordConnection : IDisposable
 
         SetActivity();
         _errorChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
+        Guild = DiscordClient.GetGuild(1065654204129083432);
 
         var commandBuilder = new SlashCommandBuilder()
             .WithName("market")
@@ -431,5 +433,23 @@ static class DiscordExtensions
         var response = await client.GetAsync(attachment.Url);
         await response.Content.CopyToAsync(stream);
         stream.Position = 0;
+    }
+
+    public static IEnumerable<SocketGuildUser> GetRoleUsers(this SocketGuild guild, ulong roleId)
+    {
+        var role = guild.GetRole(roleId);
+        return role.Members;
+    }
+
+    public static bool TryGetHighestRole(this SocketGuildUser user, out SocketRole? role)
+    {
+        var k = user.Roles;
+        return k.TryGetRole(1065654859094822993, out role) || k.TryGetRole(1065988868152766527, out role) || k.TryGetRole(1158395243494899742, out role) || k.TryGetRole(1065662664434516069, out role);
+    }
+
+    public static bool TryGetRole(this IEnumerable<SocketRole> roles, ulong roleId, out SocketRole? role)
+    {
+        role = roles.FirstOrDefault(t => t.Id == roleId);
+        return role != null;
     }
 }

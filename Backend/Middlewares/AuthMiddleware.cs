@@ -1,32 +1,32 @@
-﻿namespace PDPWebsite.Middlewares;
+﻿using Microsoft.AspNetCore.Mvc.Filters;
 
-public class AuthMiddleware
+namespace PDPWebsite.Middlewares;
+
+public class AuthFilter : IAsyncActionFilter
 {
-    private readonly RequestDelegate _next;
     private readonly RedisClient _rClient;
 
-    public AuthMiddleware(RequestDelegate next, RedisClient rClient)
+    public AuthFilter(RedisClient rClient)
     {
-        _next = next;
         _rClient = rClient;
     }
 
-    public async Task Invoke(HttpContext context)
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (context.Request.Method == "OPTIONS")
+        if (context.HttpContext.Request.Method == "OPTIONS")
         {
-            await _next.Invoke(context);
+            await next();
             return;
         }
-        var token = context.Request.Headers["Authorization"].ToString().Split(" ").Last();
+        var token = context.HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
-        if (loginRecord is null && context.Request.Path.Value!.Contains("api") && !context.Request.Path.Value!.Contains("login"))
+        if (loginRecord is null && context.HttpContext.Request.Path.Value!.Contains("api") && !context.HttpContext.Request.Path.Value!.Contains("login"))
         {
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "text/plain";
-            await context.Response.WriteAsync("Unauthorized");
+            context.HttpContext.Response.StatusCode = 401;
+            context.HttpContext.Response.ContentType = "text/plain";
+            await context.HttpContext.Response.WriteAsync("Unauthorized");
             return;
         }
-        await _next.Invoke(context);
+        await next();
     }
 }

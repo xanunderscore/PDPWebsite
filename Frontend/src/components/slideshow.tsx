@@ -32,14 +32,14 @@ export default function Slideshow() {
         const resp = await fetch("https://pdp.wildwolf.dev/victoryposes/" + (path ? path : ""));
         const data = await resp.text();
         const domData = new DOMParser().parseFromString(data, "text/html");
-        return Array.from(domData.querySelectorAll("body > pre > a") as NodeListOf<HTMLAnchorElement>).map(t => t.href.replace(t.baseURI, "")).slice(1);
+        return Array.from(domData.querySelectorAll("body > pre > a") as NodeListOf<HTMLAnchorElement>).map(t => t.href.replace(t.origin, "")).slice(1);
     }
 
     useEffect(() => {
         getImages().then(
             (data) => {
                 getImages(data[0]).then(
-                    (data) => setSpoilerImages(shuffle(data)),
+                    (spoilerData) => setSpoilerImages(shuffle(spoilerData)),
                     (err) => console.error(err)
                 );
                 var data = shuffle(data.slice(1));
@@ -85,7 +85,7 @@ export default function Slideshow() {
     return (
         <div className="slideshow-container">
             {currentImage && <div className="slideshow-image" style={{ backgroundImage: `url("https://pdp.wildwolf.dev/victoryposes/${currentImage}")` }} />}
-            {nextImage && <div className={"slideshow-image" + (state == "shifting" ? "" : " hidden")} style={{ backgroundImage: `url("https://pdp.wildwolf.dev/victoryposes/${nextImage}")` }} />}
+            {nextImage && <div className={"slideshow-image" + (state === "shifting" ? "" : " hidden")} style={{ backgroundImage: `url("https://pdp.wildwolf.dev/victoryposes/${nextImage}")` }} />}
         </div>
     )
 }

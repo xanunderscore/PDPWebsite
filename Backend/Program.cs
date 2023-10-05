@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc.Filters;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
@@ -12,7 +14,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    o.JsonSerializerOptions.Converters.Add(new UlongStringConverter());
+});
 builder.Services.AddRouting(o => o.LowercaseUrls = true);
 builder.Services.AddCors();
 if (!builder.Environment.IsDevelopment())
@@ -20,6 +26,7 @@ if (!builder.Environment.IsDevelopment())
 builder.Services.AddSingleton<EnvironmentContainer>();
 builder.Services.AddSingleton<DiscordConnection>();
 builder.Services.AddSingleton<RedisClient>();
+builder.Services.AddScoped<AuthFilter>();
 builder.Services.AddDbContext<Database>(conf => conf.UseNpgsql("Database=pdp;Username=postgres;Password=postgres;Host=localhost;"));
 builder.Services.AddSwaggerGen(c =>
 {
@@ -43,7 +50,7 @@ builder.Services.AddSwaggerGen(c =>
                     Id = "Bearer"
                 }
             },
-            new string[] { }
+            Array.Empty<string>()
         }
     });
 });
@@ -58,7 +65,6 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseRouting();
 app.UseMiddleware<CorsMiddleware>();
-app.UseMiddleware<AuthMiddleware>();
 app.UseMiddleware<OptionsMiddleware>();
 app.MapControllerRoute(
     name: "default",
@@ -81,3 +87,16 @@ if (!app.Environment.IsDevelopment())
 app.Run();
 
 LogManager.Shutdown();
+
+public class UlongStringConverter : JsonConverter<ulong>
+{
+    public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return ulong.Parse(reader.GetString()!);
+    }
+
+    public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString());
+    }
+}
