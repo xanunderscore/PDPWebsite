@@ -1,7 +1,5 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
 
@@ -24,6 +22,8 @@ builder.Services.AddCors();
 if (!builder.Environment.IsDevelopment())
     builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "src");
 builder.Services.AddSingleton<EnvironmentContainer>();
+builder.Services.AddSingleton<UniversalisClient>();
+builder.Services.AddSingleton<GameClient>();
 builder.Services.AddSingleton<DiscordConnection>();
 builder.Services.AddSingleton<RedisClient>();
 builder.Services.AddScoped<AuthFilter>();

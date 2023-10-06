@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json;
+using PDPWebsite.FFXIV;
 using ScottPlot;
 using ScottPlot.TickGenerators;
 using ScottPlot.TickGenerators.TimeUnits;
 using Color = ScottPlot.Color;
 
-namespace PDPWebsite.Universalis.Models
+namespace PDPWebsite.Universalis
 {
     public record History
     {
@@ -86,7 +87,7 @@ namespace PDPWebsite.Universalis.Models
         [JsonProperty("worldName")]
         public string WorldName { get; init; }
 
-        public Plot GetPlot(bool errorBars = false)
+        public Plot GetPlot(IEnumerable<Item> items, bool errorBars = false)
         {
             var plt = new Plot();
             var salesTmp = Sales.Select(t => new SanitizedSale(t)).GroupBy(t => t.Date);
@@ -94,7 +95,7 @@ namespace PDPWebsite.Universalis.Models
             var list = salesTmp.Select(f => new ProcessedSale(f)).OrderBy(t => t.Date).ToList();
             list.GetSalesPlot(plt, errorBars);
             plt.Legend();
-            plt.Title($"Average Price of {Item.Items.Find(t => t.Id == ItemId)!.Name}");
+            plt.Title($"Average Price of {items.First(t => t.Id == ItemId)!.Name}");
             plt.YLabel("Price");
             plt.Style.Background(Color.FromHex("31363A"), Color.FromHex("3A4149"));
             plt.XAxis.TickGenerator = new DateTimeFixedInterval(new Hour(), 3);

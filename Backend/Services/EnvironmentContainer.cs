@@ -7,11 +7,11 @@ public class EnvironmentContainer
     public EnvironmentContainer(string path = "")
     {
         if (path == "")
-            #if DEBUG
+#if DEBUG
             path = System.Environment.CurrentDirectory + @"\.env";
-        #else
+#else
             path = AppContext.BaseDirectory + @"\.env";
-        #endif
+#endif
         Load(path);
 #if DEBUG
         Load(path + ".dev");

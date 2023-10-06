@@ -1,11 +1,14 @@
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Discord;
 using Discord.Net;
 using Discord.WebSocket;
 using Newtonsoft.Json;
+using PDPWebsite.Discord;
+using PDPWebsite.FFXIV;
 using PDPWebsite.Universalis;
-using PDPWebsite.Universalis.Models;
 using SkiaSharp;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -19,10 +22,11 @@ public class DiscordConnection : IDisposable
     public SocketGuild? Guild { get; private set; }
     private static SocketTextChannel _errorChannel = null!;
     private EnvironmentContainer _environmentContainer;
+    private readonly IServiceProvider _provider;
     private readonly ILogger _logger;
-    private const string ItemCountLeft = "With %d more";
-    private const string Gil = "<:gil:1077843055941533768>";
+    private readonly GameClient _gameClient;
     private CancellationTokenSource _cts = new();
+    private Type[] _slashCommandProcessors = Array.Empty<Type>();
     private List<Game> Games { get; } = new()
     {
         new("Universalis", ActivityType.Watching),
@@ -30,7 +34,7 @@ public class DiscordConnection : IDisposable
         new("with the economy"),
     };
 
-    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer)
+    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, GameClient client, IServiceProvider provider)
     {
         UniversalisClient = new UniversalisClient();
 
@@ -43,11 +47,12 @@ public class DiscordConnection : IDisposable
         DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
         _logger = logger;
         _environmentContainer = environmentContainer;
+        _provider = provider;
+        _gameClient = client;
     }
 
     public async Task Start()
     {
-        await Item.Load(UniversalisClient);
         await DiscordClient.LoginAsync(TokenType.Bot, _environmentContainer.Get("DISCORD_TOKEN"));
         await DiscordClient.StartAsync();
     }
@@ -59,7 +64,7 @@ public class DiscordConnection : IDisposable
 
     public async Task Log(LogMessage arg)
     {
-        if (arg.Exception is WebSocketException)
+        if (arg.Exception is not null and WebSocketException or WebSocketClosedException or GatewayReconnectException || arg.Exception?.InnerException is WebSocketException or WebSocketClosedException or GatewayReconnectException)
             return;
         if (arg.Exception != null)
             await SendError(arg.Exception);
@@ -121,47 +126,76 @@ public class DiscordConnection : IDisposable
         _errorChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
         Guild = DiscordClient.GetGuild(1065654204129083432);
 
-        var commandBuilder = new SlashCommandBuilder()
-            .WithName("market")
-            .WithDescription("Market related commands")
-            .AddOption(new SlashCommandOptionBuilder()
-                .WithName("search")
-                .WithDescription("Searches the market for an item")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("item")
-                    .WithDescription("The item to search for")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .WithRequired(true))
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("server")
-                    .WithDescription("The server to search on")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .WithRequired(true))
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("error-bars")
-                    .WithDescription("Shows error bars in the graph")
-                    .WithType(ApplicationCommandOptionType.Boolean)))
-            .AddOption(new SlashCommandOptionBuilder()
-                .WithName("tax")
-                .WithDescription("Gets the current market board tax")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("server")
-                    .WithDescription("The server to get the tax for")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .WithRequired(true)))
-            .AddOption(new SlashCommandOptionBuilder()
-                .WithName("worlds")
-                .WithDescription("Lists out the datacenters and worlds")
-                .WithType(ApplicationCommandOptionType.SubCommand));
+        _slashCommandProcessors = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Any(t => t == typeof(ISlashCommandProcessor))).ToArray();
 
+        var commandBuilders = new List<SlashCommandBuilder>();
+
+        foreach (var slashCommandProcessor in _slashCommandProcessors)
+        {
+            var slashCommandBuiler = new SlashCommandBuilder();
+            slashCommandBuiler.WithName(slashCommandProcessor.Name.SanitizeName());
+            var slashCommand = slashCommandProcessor.GetCustomAttribute<SlashCommandAttribute>();
+            slashCommand?.SetBuilder(slashCommandBuiler);
+            var methods = slashCommandProcessor.GetMethods();
+            foreach (var methodInfo in methods)
+            {
+                if (methodInfo.ReturnType != typeof(Task))
+                    continue;
+                var slashCommandAttribute = methodInfo.GetCustomAttribute<SlashCommandAttribute>();
+                var slashCommandOptionBuilder = new SlashCommandOptionBuilder();
+                slashCommandOptionBuilder.WithType(ApplicationCommandOptionType.SubCommand);
+                slashCommandOptionBuilder.WithName(methodInfo.Name.SanitizeName());
+                slashCommandAttribute?.SetBuilder(slashCommandOptionBuilder);
+                foreach (var parameterInfo in methodInfo.GetParameters())
+                {
+                    var slashCommandParamBuilder = new SlashCommandOptionBuilder();
+                    var slashCommandParamAttribute = parameterInfo.GetCustomAttribute<SlashCommandAttribute>();
+                    slashCommandParamBuilder.WithName(parameterInfo.Name!.SanitizeName());
+                    slashCommandParamAttribute?.SetBuilder(slashCommandParamBuilder);
+                    var required = Nullable.GetUnderlyingType(parameterInfo.ParameterType) == null;
+                    var paramType = required ? parameterInfo.ParameterType : Nullable.GetUnderlyingType(parameterInfo.ParameterType)!;
+                    var slashCommandOptionType = paramType switch
+                    {
+                        { IsEnum: true } => ApplicationCommandOptionType.String,
+                        { } t when t == typeof(string) => ApplicationCommandOptionType.String,
+                        { } t when t == typeof(bool) => ApplicationCommandOptionType.Boolean,
+                        { } t when t == typeof(int) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(ulong) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(long) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(uint) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(short) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(ushort) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(byte) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(sbyte) => ApplicationCommandOptionType.Integer,
+                        { } t when t == typeof(double) => ApplicationCommandOptionType.Number,
+                        { } t when t == typeof(float) => ApplicationCommandOptionType.Number,
+                        { } t when t == typeof(decimal) => ApplicationCommandOptionType.Number,
+                        { } t when t == typeof(DateTime) => ApplicationCommandOptionType.String,
+                        { } t when t == typeof(DateTimeOffset) => ApplicationCommandOptionType.String,
+                        { } t when t == typeof(TimeSpan) => ApplicationCommandOptionType.String,
+                        { } t when t == typeof(SocketRole) => ApplicationCommandOptionType.Role,
+                        { } t when t == typeof(SocketUser) => ApplicationCommandOptionType.User,
+                        { } t when t == typeof(SocketChannel) => ApplicationCommandOptionType.Channel,
+                        { } t when t == typeof(Attachment) => ApplicationCommandOptionType.Attachment,
+                        _ => throw new ArgumentOutOfRangeException(nameof(paramType), paramType, $"Could not match type with {paramType.Name}")
+                    };
+                    slashCommandParamBuilder.WithType(slashCommandOptionType);
+                    slashCommandParamBuilder.WithRequired(required);
+                    slashCommandOptionBuilder.AddOption(slashCommandParamBuilder);
+                }
+                slashCommandBuiler.AddOption(slashCommandOptionBuilder);
+            }
+            commandBuilders.Add(slashCommandBuiler);
+        }
 
         try
         {
             foreach (var discordClientGuild in DiscordClient.Guilds)
             {
-                await DiscordClient.Rest.CreateGuildCommand(commandBuilder.Build(), discordClientGuild.Id);
+                foreach (var commandBuilder in commandBuilders)
+                {
+                    await DiscordClient.Rest.CreateGuildCommand(commandBuilder.Build(), discordClientGuild.Id);
+                }
             }
         }
         catch (HttpException exception)
@@ -173,211 +207,47 @@ public class DiscordConnection : IDisposable
 
     private async Task SlashCommandExecuted(SocketSlashCommand arg)
     {
-        var data = arg.Data.Options.First();
-        await arg.RespondAsync("Thinking...");
-        World[]? worlds;
-        Datacenter[]? datacenters;
-        StringBuilder? sb;
-        try
+        var command = arg.Data.Name;
+        var subCommand = arg.Data.Options.FirstOrDefault()?.Name;
+        var type = _slashCommandProcessors.FirstOrDefault(t => t.IsSameCommand(command));
+        if (type == null)
         {
-            _logger.Log(LogLevel.Trace, $"Got {data.Name} command from {arg.User.Username}#{arg.User.Discriminator} ({arg.User.Id})");
-            switch (data.Name)
+            await arg.RespondAsync($"No command found for {command} good job you found a bug in discord.");
+            return;
+        }
+        await arg.RespondAsync("Thinking...");
+        var instance = ActivatorUtilities.CreateInstance(_provider, type, arg);
+        var method = type.GetMethods().FirstOrDefault(t => t.IsSameCommand(subCommand!));
+        if (method == null)
+        {
+            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"No subcommand found for {subCommand} good job you found a bug in discord.");
+            return;
+        }
+        var parameters = method.GetParameters();
+        var args = new List<object?>();
+        var paramsOptions = arg.Data.Options.First().Options;
+        foreach (var parameter in parameters)
+        {
+            foreach (var paramOption in paramsOptions)
             {
-                case "search":
+                if (parameter.IsSameCommand(paramOption.Name))
+                {
+                    switch (parameter.ParameterType)
                     {
-                        worlds = await UniversalisClient.GetWorlds();
-                        datacenters = await UniversalisClient.GetDatacenters();
-                        var names = new List<string>();
-                        foreach (var datacenter in datacenters)
-                        {
-                            if (!datacenter.Worlds.All(x => x < 1000)) continue;
-                            names.Add(datacenter.Name);
-                            names.Add(datacenter.Region);
-                            names.AddRange(datacenter.Worlds.Select(x => worlds.First(t => t.Id == x).Name));
-                        }
-                        var item = data.Options.First(t => t.Name == "item").Value as string;
-                        var server = data.Options.First(t => t.Name == "server").Value as string;
-                        _logger.Log(LogLevel.Trace, $"Trying with server: {server} and item: {item}");
-                        if (!names.Any(t => string.Equals(t, server, StringComparison.InvariantCultureIgnoreCase)))
-                        {
-                            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not find server {server}");
+                        case { IsEnum: true }:
+                            args.Add(Enum.Parse(parameter.ParameterType, paramOption.Value as string ?? throw new InvalidOperationException()));
                             break;
-                        }
-
-                        server = names.First(t => string.Equals(t, server, StringComparison.InvariantCultureIgnoreCase));
-                        var itemDatas = Item.Items.Where(t => t.Name.Contains(item!, StringComparison.InvariantCultureIgnoreCase)).ToList();
-                        if (!itemDatas.Any())
-                        {
-                            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not find item {item}");
+                        default:
+                            args.Add(paramOption.Value);
                             break;
-                        }
-                        _logger.Log(LogLevel.Trace, $"Found server and item count {itemDatas.Count}");
-                        var builder = new EmbedBuilder();
-                        sb = new StringBuilder();
-                        if (itemDatas.Count > 1)
-                        {
-                            for (var i = 0; i < itemDatas.Count; i++)
-                            {
-                                var countLeft = ItemCountLeft.Replace("%d", $"{itemDatas.Count - i}");
-                                var str = $"`{i + 1}` {itemDatas[i].Name}";
-                                sb.AppendLine(sb.Length + str.Length < 4096 - countLeft.Length ? str : countLeft);
-                            }
-
-                            builder.WithTitle($"Multiple items with name `{item}`");
-                            builder.WithDescription(sb.ToString());
-                            await arg.ModifyOriginalResponseAsync(msg =>
-                            {
-                                msg.Content = null;
-                                msg.Embed = builder.Build();
-                            });
-                            break;
-                        }
-                        _logger.Log(LogLevel.Trace, $"Found item {itemDatas[0].Name}");
-                        var itemData = itemDatas.First();
-                        var listing = await UniversalisClient.GetListing(server, itemData.Id);
-                        var history = await UniversalisClient.GetHistory(server, itemData.Id);
-                        _logger.Log(LogLevel.Trace, $"Got listing and history");
-                        var priceHistory = history.GetPriceHistory();
-                        var hplt = history.GetPlot(data.Options.FirstOrDefault(t => t.Name == "error-bars")?.Value as bool? ?? false).GetImage(1100, 400);
-                        var mplt = listing.GetPlot().GetImage(1100, 200);
-                        var plt = new SKBitmap(1100, 600);
-                        using (var canvas = new SKCanvas(plt))
-                        {
-                            canvas.DrawImage(SKImage.FromEncodedData(hplt.GetImageBytes()), 0, 0);
-                            canvas.DrawImage(SKImage.FromEncodedData(mplt.GetImageBytes()), 0, 400);
-                        }
-
-                        var stream = new MemoryStream();
-                        plt.Encode(SKEncodedImageFormat.Png, 80).SaveTo(stream);
-                        sb.AppendLine($"**Current Average Price**: {listing.CurrentAveragePrice}");
-                        sb.AppendLine($"**Historical Average Price**: {priceHistory.AveragePrice}");
-                        sb.AppendLine($"**Average NQ**: {listing.CurrentAveragePriceNq}");
-                        sb.AppendLine($"**Historical Average NQ**: {priceHistory.AveragePriceNq ?? 0}");
-                        sb.AppendLine($"**Average HQ**: {listing.CurrentAveragePriceHq}");
-                        sb.AppendLine($"**Historical Average HQ**: {priceHistory.AveragePriceHq ?? 0}");
-                        builder.WithTitle($"Prices for {itemData.Name} on {server}");
-                        builder.WithColor(Color.Teal);
-                        builder.WithDescription(sb.ToString());
-                        sb.Clear();
-                        if (listing.Listings.Count > 0)
-                        {
-                            var gil = new StringBuilder();
-                            var total = new StringBuilder();
-                            foreach (var listingView in listing.Listings.Take(10))
-                            {
-                                gil.AppendLine(listingView.PricePerUnit + Gil);
-                                sb.AppendLine($"x{listingView.Quantity} {(!string.IsNullOrWhiteSpace(listingView.WorldName) ? $"[**{listingView.WorldName ?? server}**]" : "")}");
-                                total.AppendLine(listingView.Total + Gil);
-                            }
-
-                            builder.AddField("Price per unit", gil.ToString(), true);
-                            builder.AddField("Quantity", sb.ToString(), true);
-                            builder.AddField("Total price", total.ToString(), true);
-                        }
-                        else
-                        {
-                            builder.AddField("No listings", "No listings found for this item");
-                        }
-                        builder.WithImageUrl("attachment://plot.png");
-                        var attachments = new List<FileAttachment>
-                    {
-                        new(stream, "plot.png")
-                    };
-                        using var iconStream = new MemoryStream();
-                        var icon = itemData.GetIconTexture();
-                        if (icon != null)
-                        {
-                            icon.Encode(SKEncodedImageFormat.Png, 80).SaveTo(iconStream);
-                            builder.WithThumbnailUrl("attachment://icon.png");
-                            attachments.Add(new FileAttachment(iconStream, "icon.png"));
-                        }
-                        _logger.Log(LogLevel.Trace, "Updating message with embed");
-                        await arg.ModifyOriginalResponseAsync(msg =>
-                        {
-                            msg.Content = null;
-                            msg.Embed = builder.Build();
-                            msg.Attachments = attachments;
-                        });
-                        break;
                     }
-                case "tax":
-                    worlds = await UniversalisClient.GetWorlds();
-                    if (worlds == null || !worlds.Any())
-                    {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not retrieve worlds.");
-                        break;
-                    }
-
-                    var serverInp = data.Options.First(j => j.Name == "server").Value as string;
-                    _logger.Log(LogLevel.Trace, $"Trying with server {serverInp}");
-                    if (!worlds.Any(t => string.Equals(t.Name, serverInp, StringComparison.InvariantCultureIgnoreCase)))
-                    {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"No world exists of name: {serverInp}");
-                        break;
-                    }
-                    var world = worlds.First(t => string.Equals(t.Name, serverInp, StringComparison.InvariantCultureIgnoreCase));
-                    _logger.Log(LogLevel.Trace, $"Found server {world.Name}");
-                    var tax = await UniversalisClient.GetTaxRates(world.Id);
-                    _logger.Log(LogLevel.Trace, $"Got tax data: {tax}");
-                    var embedBuilder = new EmbedBuilder();
-                    embedBuilder.WithTitle($"Market tax rates for: {world.Name}");
-                    embedBuilder.AddField("Limsa Lominsa", $"{tax.LimsaLominsa}%", true);
-                    embedBuilder.AddField("Gridania", $"{tax.Gridania}%", true);
-                    embedBuilder.AddField("Ul'dah", $"{tax.Uldah}%", true);
-                    embedBuilder.AddField("Ishgard", $"{tax.Ishgard}%", true);
-                    embedBuilder.AddField("Kugane", $"{tax.Kugane}%", true);
-                    embedBuilder.AddField("Crystarium", $"{tax.Crystarium}%", true);
-                    embedBuilder.AddField("Old Sharlayan", $"{tax.OldSharlayan}%", true);
-                    await arg.ModifyOriginalResponseAsync(msg =>
-                    {
-                        msg.Content = null;
-                        msg.Embed = embedBuilder.Build();
-                    });
-                    break;
-                case "worlds":
-                    _logger.Log(LogLevel.Trace, "Getting worlds");
-                    worlds = await UniversalisClient.GetWorlds();
-                    datacenters = await UniversalisClient.GetDatacenters();
-                    if (worlds == null || !worlds.Any() || datacenters == null || !datacenters.Any())
-                    {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not retrieve datacenters or worlds.");
-                        break;
-                    }
-                    _logger.Log(LogLevel.Trace, "Filtering worlds");
-                    var serverMap = datacenters.Where(t => t.Worlds.Any(k => k < 1000)).Select(t => new { t.Name, t.Region, Worlds = t.Worlds.Select(k => worlds.First(j => j.Id == k)).ToArray() }).GroupBy(t => t.Region).ToArray();
-                    sb = new StringBuilder();
-                    var embeds = new List<Embed>();
-                    foreach (var grouping in serverMap)
-                    {
-                        var embed = new EmbedBuilder();
-                        embed.WithTitle($"Worlds in `{grouping.Key}`");
-                        embed.WithColor(Color.Teal);
-                        foreach (var datacenter in grouping)
-                        {
-                            foreach (var w in datacenter.Worlds)
-                            {
-                                sb.AppendLine($"{w.Name}");
-                            }
-
-                            embed.AddField(datacenter.Name, sb.ToString(), true);
-                            sb.Clear();
-                        }
-                        embeds.Add(embed.Build());
-                    }
-                    _logger.Log(LogLevel.Trace, "Built datacenter embeds");
-                    await arg.ModifyOriginalResponseAsync(msg =>
-                    {
-                        msg.Content = null;
-                        msg.Embeds = embeds.ToArray();
-                    });
-                    break;
+                }
             }
         }
-        catch (Exception e)
-        {
-            _logger.Log(LogLevel.Error, e, "Error in slash command");
-            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"An error occurred. Notified mods.");
-        }
+        while(args.Count != parameters.Length)
+            args.Add(null);
+
+        await ((Task?)method.Invoke(instance, args.ToArray()))!;
     }
 
     public async Task DisposeAsync()
@@ -397,6 +267,8 @@ public class DiscordConnection : IDisposable
 
 static class DiscordExtensions
 {
+    public static Regex CapitalLetters = new("[A-Z]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public static async Task DownloadAllImages(this DiscordSocketClient client, ulong id)
     {
         var victoryPoses = (SocketTextChannel)await client.GetChannelAsync(id);
@@ -451,5 +323,28 @@ static class DiscordExtensions
     {
         role = roles.FirstOrDefault(t => t.Id == roleId);
         return role != null;
+    }
+
+    public static void SanitizeName(this SlashCommandOptionBuilder builder)
+    {
+        var name = builder.Name;
+        var matches = CapitalLetters.Matches(name);
+        for (var index = 0; index < matches.Count; index++)
+        {
+            var match = matches[index];
+            name = name.Replace(match.Value, "-" + match.Value.ToLower());
+        }
+        builder.WithName(name.ToLower());
+    }
+
+    public static string SanitizeName(this string value)
+    {
+        var matches = CapitalLetters.Matches(value);
+        for (var index = 0; index < matches.Count; index++)
+        {
+            var match = matches[index];
+            value = value.Replace(match.Value, "-" + match.Value.ToLower());
+        }
+        return value.TrimStart('-');
     }
 }

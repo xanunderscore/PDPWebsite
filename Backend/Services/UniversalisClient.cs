@@ -4,9 +4,9 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text;
 using Newtonsoft.Json;
-using PDPWebsite.Universalis.Models;
+using PDPWebsite.Universalis;
 
-namespace PDPWebsite.Universalis
+namespace PDPWebsite.Services
 {
     public class UniversalisClient : HttpClient
     {

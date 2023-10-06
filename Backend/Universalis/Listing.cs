@@ -3,7 +3,7 @@ using ScottPlot;
 using ScottPlot.Plottables;
 using Color = ScottPlot.Color;
 
-namespace PDPWebsite.Universalis.Models
+namespace PDPWebsite.Universalis
 {
     public record Listing
     {

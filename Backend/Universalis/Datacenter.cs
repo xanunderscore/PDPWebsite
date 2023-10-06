@@ -1,15 +1,15 @@
 ﻿using Newtonsoft.Json;
 
-namespace PDPWebsite.Universalis.Models
+namespace PDPWebsite.Universalis
 {
     public record Datacenter
     {
         [JsonProperty("name")]
         public string Name { get; init; }
-    
+
         [JsonProperty("region")]
         public string Region { get; init; }
-    
+
         [JsonProperty("worlds")]
         public int[] Worlds { get; init; }
     }
@@ -18,7 +18,7 @@ namespace PDPWebsite.Universalis.Models
     {
         [JsonProperty("id")]
         public int Id { get; init; }
-    
+
         [JsonProperty("name")]
         public string Name { get; init; }
     }
