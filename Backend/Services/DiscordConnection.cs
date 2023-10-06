@@ -1,15 +1,11 @@
 using System.Net.WebSockets;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.Net;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using PDPWebsite.Discord;
-using PDPWebsite.FFXIV;
-using PDPWebsite.Universalis;
-using SkiaSharp;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 

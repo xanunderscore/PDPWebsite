@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using Discord;
-using Discord.WebSocket;
 
 namespace PDPWebsite.Discord;
 

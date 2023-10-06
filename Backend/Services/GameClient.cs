@@ -2,8 +2,6 @@
 using Lumina.Data;
 using Lumina.Data.Files;
 using PDPWebsite.FFXIV;
-using SkiaSharp;
-using System.Runtime.InteropServices;
 
 namespace PDPWebsite.Services;
 
@@ -14,9 +12,6 @@ public class GameClient : IDisposable
 
     private List<Item> _marketItems = new();
     public IReadOnlyList<Item> MarketItems => _marketItems;
-
-    private const string IconFileFormat = "ui/icon/{0:D3}000/{1}{2:D6}.tex";
-    private const string IconHDFileFormat = "ui/icon/{0:D3}000/{1}{2:D6}_hr1.tex";
 
     public GameClient(UniversalisClient client)
     {

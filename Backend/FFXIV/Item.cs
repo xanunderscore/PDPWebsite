@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using Lumina;
 using Lumina.Data.Files;
 using SkiaSharp;
 

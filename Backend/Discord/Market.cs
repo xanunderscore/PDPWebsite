@@ -1,11 +1,7 @@
 ﻿using Discord;
-using PDPWebsite.Services;
-using PDPWebsite.Universalis;
 using SkiaSharp;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text;
 using Discord.WebSocket;
-using Lumina.Excel.GeneratedSheets;
 
 namespace PDPWebsite.Discord;
 

@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using PDPWebsite.Models;
-
-namespace PDPWebsite.Services;
+﻿namespace PDPWebsite.Services;
 
 public class Database : DbContext
 {
