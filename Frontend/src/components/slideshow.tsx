@@ -26,10 +26,12 @@ export default function Slideshow() {
     const [nextImage, setNextImage] = useState<string>("");
     const [lastUpdate, setLastUpdate] = useState<{ time: Date, delta: number }>({ time: new Date(), delta: 0 });
     const [state, setState] = useState<"shifting" | "shifted" | "shifted-prepared">("shifted");
+    const [blured, setBlured] = useState<boolean>(false);
+    const [unblured, setUnblured] = useState<boolean>(false);
     const loadDelays = [10000, 50000, 2000];
 
     async function getImages(path?: string) {
-        const resp = await fetch("https://pdp.wildwolf.dev/victoryposes/" + (path ? path : ""));
+        const resp = await fetch("https://pdp.wildwolf.dev/files/victoryposes" + (path ? path : ""));
         const data = await resp.text();
         const domData = new DOMParser().parseFromString(data, "text/html");
         return Array.from(domData.querySelectorAll("body > pre > a") as NodeListOf<HTMLAnchorElement>).map(t => t.href.replace(t.origin, "")).slice(1);
@@ -42,7 +44,7 @@ export default function Slideshow() {
                     (spoilerData) => setSpoilerImages(shuffle(spoilerData)),
                     (err) => console.error(err)
                 );
-                var data = shuffle(data.slice(1));
+                data = shuffle(data.slice(1));
                 setImages(data);
                 setCurrentImage(data[0]);
                 setNextImage(data[1]);
@@ -55,6 +57,8 @@ export default function Slideshow() {
     useEffect(() => {
         const interval = setInterval(() => {
             setLastUpdate({ time: new Date(), delta: new Date().getTime() - lastUpdate.time.getTime() + lastUpdate.delta });
+            localStorage.getItem("blured") === "true" ? setBlured(true) : setBlured(false);
+            localStorage.getItem("unblured") === "true" ? setUnblured(true) : setUnblured(false);
         }, 100);
         return () => clearInterval(interval);
     }, [lastUpdate]);
@@ -83,9 +87,9 @@ export default function Slideshow() {
     }, [lastUpdate]);
 
     return (
-        <div className="slideshow-container">
-            {currentImage && <div className="slideshow-image" style={{ backgroundImage: `url("https://pdp.wildwolf.dev/victoryposes/${currentImage}")` }} />}
-            {nextImage && <div className={"slideshow-image" + (state === "shifting" ? "" : " hidden")} style={{ backgroundImage: `url("https://pdp.wildwolf.dev/victoryposes/${nextImage}")` }} />}
+        <div className={"slideshow-container" + (blured ? " blur" : "") + (unblured ? " unblur" : "")}>
+            {currentImage && <div className="slideshow-image" style={{ backgroundImage: `url("https://pdp.wildwolf.dev/files/victoryposes${currentImage}")` }} />}
+            {nextImage && <div className={"slideshow-image" + (state === "shifting" ? "" : " hidden")} style={{ backgroundImage: `url("https://pdp.wildwolf.dev/files/victoryposes${nextImage}")` }} />}
         </div>
     )
 }

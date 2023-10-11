@@ -5,37 +5,45 @@ import "./index.scss";
 import { Header } from "./components/partials";
 import Loader from "./components/loader";
 import { AuthProvider } from "./components/auth";
-import { Login, Logout } from "./pages/loginout";
 import Slideshow from "./components/slideshow";
-import About from "./pages/about";
 import Modal from "./components/modal";
 import History from "./components/history";
+import SignalRProvider from "./components/signalr";
+import RequestProvider from "./components/request";
+import SlideshowPage from "./pages/slideshow";
+import { Login, Logout } from "./pages/loginout";
 var Home = lazy(() => import("./pages/home"));
+var About = lazy(() => import("./pages/about"));
 
 const baseUrl = document.getElementsByTagName("base")[0].getAttribute("href");
 
 function Index() {
     return (
         <StrictMode>
-            <BrowserRouter basename={baseUrl}>
-                <History>
-                    <AuthProvider>
-                        <Modal>
-                            <Header />
-                            <Suspense fallback={<Loader />}>
-                                <div className="fill-page">
-                                    <Routes>
-                                        <Route path="/" element={<Home />} />
-                                        <Route path="/login" element={<Login />} />
-                                        <Route path="/logout" element={<Logout />} />
-                                        <Route path="/about" element={<About />} />
-                                    </Routes>
-                                </div>
-                            </Suspense>
-                        </Modal>
-                    </AuthProvider>
-                </History>
-            </BrowserRouter>
+            <SignalRProvider>
+                <BrowserRouter basename={baseUrl}>
+                    <History>
+                        <RequestProvider>
+                            <AuthProvider>
+                                <Modal>
+                                    <Header />
+                                    <Suspense fallback={<Loader />}>
+                                        <div className="fill-page">
+                                            <Routes>
+                                                <Route path="/" element={<Home />} />
+                                                <Route path="/login" element={<Login />} />
+                                                <Route path="/logout" element={<Logout />} />
+                                                <Route path="/slideshow" element={<SlideshowPage />} />
+                                                <Route path="/about" element={<About />} />
+                                            </Routes>
+                                        </div>
+                                    </Suspense>
+                                </Modal>
+                            </AuthProvider>
+                        </RequestProvider>
+                    </History>
+                </BrowserRouter>
+            </SignalRProvider>
             <Slideshow />
         </StrictMode>
     );

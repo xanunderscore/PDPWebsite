@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRequest } from "../components/request";
 import { useAuth } from "../components/auth";
 import { useModal } from "../components/modal";
+import { User } from "../structs/user";
 
 export default function About() {
     const [users, setUsers] = useState<User[]>([]);
-    const request = useRequest();
+    const request = useRequest().request;
+    const auth = useAuth();
 
     async function getUsers() {
         var rep = await request("/api/aboutinfo");
@@ -27,15 +29,14 @@ export default function About() {
                 <h1>About</h1>
             </div>
             <div className="row d-flex justify-content-center">
-                {users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={user} refresh={getUsers} /></div>)}
+                {users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={{ ...user, canEdit: auth.user && (auth.user.role === "Admin" || auth.user.role === "Mods" || auth.user.role === "Devs" || user.id === auth.user.id) }} refresh={getUsers} /></div>)}
             </div>
         </div>
     );
 }
 
-function UserCard(props: { user: User, refresh?: () => void }) {
-    const auth = useAuth();
-    const request = useRequest();
+function UserCard(props: { user: User & { canEdit: boolean }, refresh?: () => void }) {
+    const request = useRequest().request;
     const setModal = useModal();
     const formRef = useRef<HTMLDivElement>(null);
     function textColor() {
@@ -115,7 +116,7 @@ function UserCard(props: { user: User, refresh?: () => void }) {
     return (
         <div className="card mb-4">
             <div className="card-body" style={{ position: "relative" }}>
-                {auth.user && (auth.user.role == "Admin" || auth.user.role == "Mods") && <div style={{ position: "absolute", right: 18, height: 32, width: 32, borderRadius: "50%", border: "1px solid var(--bs-body-color)" }} className="d-flex justify-content-center align-items-center" onClick={editClick}>
+                {props.user.canEdit && <div style={{ position: "absolute", right: 18, height: 32, width: 32, borderRadius: "50%", border: "1px solid var(--bs-body-color)" }} className="d-flex justify-content-center align-items-center" onClick={editClick}>
                     <i className="bi bi-pencil-fill" style={{ top: -1, right: -1, position: "relative" }}></i>
                 </div>}
                 <h5 className="card-title">{props.user.visualName ?? props.user.originalName}</h5>
@@ -127,14 +128,4 @@ function UserCard(props: { user: User, refresh?: () => void }) {
             </div>
         </div>
     )
-}
-
-interface User {
-    id: string;
-    description: string;
-    roleName: string;
-    roleColor: string;
-    avatar: string;
-    originalName: string;
-    visualName: string | null;
 }

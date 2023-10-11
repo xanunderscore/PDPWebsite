@@ -26,7 +26,8 @@ export function AuthProvider(props: any) {
         role: string,
         token: string
     } | null>(null);
-    const request = useRequest();
+    const requestContext = useRequest();
+    const request = requestContext.request;
 
     async function login(uid: string) {
         var resp = await request("/api/auth/login?userId=" + uid, {
@@ -62,14 +63,35 @@ export function AuthProvider(props: any) {
         }
     }
 
-    useEffect(() => {
-        var k = getCookie("token");
-        if (k) {
-            check();
+    async function refresh() {
+        var token = getCookie("token")?.value;
+        if (!token && user) {
+            token = user.token;
         }
+        if (!token) {
+            setUser(null);
+            return;
+        }
+        var resp = await request("/api/auth/refresh", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token,
+            }
+        });
+        if (resp.status === 200) {
+            setUser(await resp.json());
+        }
+        else {
+            setUser(null);
+        }
+    }
+
+    useEffect(() => {
+        refresh();
     }, [setUser]);
 
     useEffect(() => {
+        requestContext.setAuth(user);
         if (user) {
             setCookie("token", user.token, 7);
         }
