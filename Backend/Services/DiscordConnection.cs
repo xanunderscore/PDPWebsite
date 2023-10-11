@@ -152,7 +152,7 @@ public class DiscordConnection : IDisposable
                     var paramType = required ? parameterInfo.ParameterType : Nullable.GetUnderlyingType(parameterInfo.ParameterType)!;
                     var slashCommandOptionType = paramType switch
                     {
-                        { IsEnum: true } => ApplicationCommandOptionType.String,
+                        { IsEnum: true } => ApplicationCommandOptionType.Integer,
                         { } t when t == typeof(string) => ApplicationCommandOptionType.String,
                         { } t when t == typeof(bool) => ApplicationCommandOptionType.Boolean,
                         { } t when t == typeof(int) => ApplicationCommandOptionType.Integer,
@@ -175,6 +175,20 @@ public class DiscordConnection : IDisposable
                         { } t when t == typeof(Attachment) => ApplicationCommandOptionType.Attachment,
                         _ => throw new ArgumentOutOfRangeException(nameof(paramType), paramType, $"Could not match type with {paramType.Name}")
                     };
+                    if (paramType.IsEnum)
+                    {
+                        //check if enum has more than 25 values
+                        var values = Enum.GetValues(paramType);
+                        if (values.Length > 25)
+                        {
+                            _logger.LogError($"Enum {paramType.Name} has more than 25 values, this is not supported by discord.");
+                            goto enumEscape;
+                        }
+                        foreach (var value in values)
+                        {
+                            slashCommandParamBuilder.AddChoice(value.ToString()!, (int)value);
+                        }
+                    }
                     slashCommandParamBuilder.WithType(slashCommandOptionType);
                     slashCommandParamBuilder.WithRequired(required);
                     slashCommandOptionBuilder.AddOption(slashCommandParamBuilder);
@@ -182,6 +196,8 @@ public class DiscordConnection : IDisposable
                 slashCommandBuiler.AddOption(slashCommandOptionBuilder);
             }
             commandBuilders.Add(slashCommandBuiler);
+            enumEscape:
+                ;
         }
 
         try
@@ -231,7 +247,7 @@ public class DiscordConnection : IDisposable
                     switch (parameter.ParameterType)
                     {
                         case { IsEnum: true }:
-                            args.Add(Enum.Parse(parameter.ParameterType, paramOption.Value as string ?? throw new InvalidOperationException()));
+                            args.Add(Enum.GetValues(parameter.ParameterType).GetValue((int)paramOption.Value));
                             break;
                         default:
                             args.Add(paramOption.Value);
