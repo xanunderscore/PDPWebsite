@@ -10,7 +10,7 @@ public class EnvironmentContainer
 #if DEBUG
             path = System.Environment.CurrentDirectory + @"\.env";
 #else
-            path = AppContext.BaseDirectory + @"\.env";
+            path = Path.Combine(AppContext.BaseDirectory, ".env");
 #endif
         Load(path);
 #if DEBUG
