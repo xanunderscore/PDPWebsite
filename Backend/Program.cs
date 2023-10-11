@@ -1,7 +1,9 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
+using PDPWebsite.Hubs;
 
 var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("Starting up");
@@ -18,9 +20,6 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.Converters.Add(new UlongStringConverter());
 });
 builder.Services.AddRouting(o => o.LowercaseUrls = true);
-builder.Services.AddCors();
-if (!builder.Environment.IsDevelopment())
-    builder.Services.AddSpaStaticFiles(opt => opt.RootPath = "src");
 builder.Services.AddSingleton<EnvironmentContainer>();
 builder.Services.AddSingleton<UniversalisClient>();
 builder.Services.AddSingleton<GameClient>();
@@ -54,16 +53,23 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+builder.Services.AddSignalR().AddJsonProtocol(opt =>
+{
+    opt.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    opt.PayloadSerializerOptions.Converters.Add(new UlongStringConverter());
+});
+builder.Services.AddCors(o =>
+{
+    o.AddDefaultPolicy(b =>
+    {
+        b.WithOrigins("http://localhost:3000").AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-    app.UseStaticFiles();
-    app.UseSpaStaticFiles();
-}
 app.UseRouting();
+app.UseCors();
 app.UseMiddleware<CorsMiddleware>();
 app.UseMiddleware<OptionsMiddleware>();
 app.MapControllerRoute(
@@ -79,11 +85,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-if (!app.Environment.IsDevelopment())
-    app.UseSpa(opt =>
-    {
-        opt.Options.SourcePath = "src";
-    });
+app.MapHub<MainHub>("/sigr");
 app.Run();
 
 LogManager.Shutdown();

@@ -4,3 +4,4 @@ global using Microsoft.AspNetCore.Mvc;
 global using PDPWebsite.Models;
 global using PDPWebsite.Middlewares;
 global using Microsoft.EntityFrameworkCore;
+global using Microsoft.AspNetCore.SignalR;

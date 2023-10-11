@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using PDPWebsite.Hubs;
 
 namespace PDPWebsite.Controllers;
 
@@ -8,18 +8,21 @@ public class AboutInfoController : ControllerBase
 {
     private readonly Database _database;
     private readonly DiscordConnection _discord;
+    private readonly ILogger<AboutInfoController> _logger;
+    private readonly IHubContext<MainHub> _hub;
 
-    public AboutInfoController(Database database, DiscordConnection discord)
+    public AboutInfoController(Database database, DiscordConnection discord, IHubContext<MainHub> hub)
     {
         _database = database;
         _discord = discord;
+        _hub = hub;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAboutInfo()
     {
         var aboutInfo = await _database.AboutInfos.ToListAsync();
-        var users = _discord.Guild!.GetRoleUsers(1065654859094822993).Concat(_discord.Guild!.GetRoleUsers(1065988868152766527)).Concat(_discord.Guild!.GetRoleUsers(1158395243494899742)).Concat(_discord.Guild!.GetRoleUsers(1065662664434516069)).DistinctBy(t => t.Id).ToArray();
+        var users = _discord.Guild!.GetRoleUsers(1065654859094822993).OrderBy(t => t.Id).Concat(_discord.Guild!.GetRoleUsers(1065988868152766527).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1158395243494899742).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1065662664434516069).OrderBy(t => t.Id)).DistinctBy(t => t.Id).ToArray();
         var ret = new List<AboutInfoExtended>();
         foreach (var socketGuildUser in users)
         {
@@ -37,6 +40,17 @@ public class AboutInfoController : ControllerBase
     {
         aboutInfo.VisualName = aboutInfo.VisualName?.Trim();
         aboutInfo.Description = aboutInfo.Description.Trim();
+        if (string.IsNullOrWhiteSpace(aboutInfo.Description))
+        {
+            var saved = _database.AboutInfos.FirstOrDefault(t => t.Id == aboutInfo.Id);
+            if (saved != null)
+            {
+                _database.AboutInfos.Remove(saved);
+                await _database.SaveChangesAsync();
+                await _hub.Clients.All.SendAsync("AboutInfoDeleted", aboutInfo.Id);
+                return Ok();
+            }
+        }
 
         if(string.IsNullOrWhiteSpace(aboutInfo.VisualName))
             aboutInfo.VisualName = null;
@@ -50,6 +64,7 @@ public class AboutInfoController : ControllerBase
             await _database.AboutInfos.AddAsync(aboutInfo);
         }
         await _database.SaveChangesAsync();
+        await _hub.Clients.All.SendAsync("AboutInfoUpdated", aboutInfo);
         return Ok();
     }
 }
