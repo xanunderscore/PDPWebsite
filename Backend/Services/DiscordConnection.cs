@@ -16,19 +16,23 @@ public class DiscordConnection : IDisposable
     public static UniversalisClient UniversalisClient { get; private set; } = null!;
     public DiscordSocketClient DiscordClient { get; }
     public SocketGuild? Guild { get; private set; }
-    private static SocketTextChannel _errorChannel = null!;
+    public SocketTextChannel? LogChannel;
     private EnvironmentContainer _environmentContainer;
     private readonly IServiceProvider _provider;
     private readonly ILogger _logger;
     private readonly GameClient _gameClient;
     private CancellationTokenSource _cts = new();
     private Type[] _slashCommandProcessors = Array.Empty<Type>();
+    private NLog.LogLevel _logLevel = NLog.LogLevel.Warn;
     private List<Game> Games { get; } = new()
     {
         new("Universalis", ActivityType.Watching),
         new("with the market"),
         new("with the economy"),
     };
+
+    public static Action? OnReady { get; set; }
+    public static DiscordConnection? Instance { get; set; }
 
     public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, GameClient client, IServiceProvider provider)
     {
@@ -45,6 +49,7 @@ public class DiscordConnection : IDisposable
         _environmentContainer = environmentContainer;
         _provider = provider;
         _gameClient = client;
+        Instance = this;
     }
 
     public async Task Start()
@@ -53,17 +58,10 @@ public class DiscordConnection : IDisposable
         await DiscordClient.StartAsync();
     }
 
-    public async Task SendError(Exception exception)
+    public Task Log(LogMessage arg)
     {
-        await _errorChannel.SendMessageAsync(embed: new EmbedBuilder().WithTitle("Exception").WithDescription(exception.ToString()).Build());
-    }
-
-    public async Task Log(LogMessage arg)
-    {
-        if (arg.Exception is not null and WebSocketException or WebSocketClosedException or GatewayReconnectException || arg.Exception?.InnerException is WebSocketException or WebSocketClosedException or GatewayReconnectException)
-            return;
-        if (arg.Exception != null)
-            await SendError(arg.Exception);
+        if (arg.Exception is WebSocketException or WebSocketClosedException or GatewayReconnectException || arg.Exception?.InnerException is WebSocketException or WebSocketClosedException or GatewayReconnectException)
+            return Task.CompletedTask;
 
         _logger.Log(arg.Severity switch
         {
@@ -75,6 +73,7 @@ public class DiscordConnection : IDisposable
             LogSeverity.Debug => LogLevel.Debug,
             _ => LogLevel.Information
         }, arg.Exception, arg.Message);
+        return Task.CompletedTask;
     }
 
     public async Task SetActivity()
@@ -101,6 +100,15 @@ public class DiscordConnection : IDisposable
 
     private async Task Ready()
     {
+        SetActivity();
+        CreateCommands();
+        LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
+        Guild = DiscordClient.GetGuild(1065654204129083432);
+        OnReady?.Invoke();
+    }
+
+    private async Task CreateCommands()
+    {
         try
         {
             foreach (var discordClientGuild in DiscordClient.Guilds)
@@ -117,10 +125,6 @@ public class DiscordConnection : IDisposable
             var json = JsonConvert.SerializeObject(exception.Errors, Formatting.Indented);
             await Log(new LogMessage(LogSeverity.Error, "UniversalisBot", json, exception));
         }
-
-        SetActivity();
-        _errorChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
-        Guild = DiscordClient.GetGuild(1065654204129083432);
 
         _slashCommandProcessors = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Any(t => t == typeof(ISlashCommandProcessor))).ToArray();
 
@@ -196,8 +200,7 @@ public class DiscordConnection : IDisposable
                 slashCommandBuiler.AddOption(slashCommandOptionBuilder);
             }
             commandBuilders.Add(slashCommandBuiler);
-            enumEscape:
-                ;
+        enumEscape:;
         }
 
         try
@@ -227,14 +230,15 @@ public class DiscordConnection : IDisposable
             await arg.RespondAsync($"No command found for {command} good job you found a bug in discord.");
             return;
         }
-        await arg.RespondAsync("Thinking...");
         var instance = ActivatorUtilities.CreateInstance(_provider, type, arg);
         var method = type.GetMethods().FirstOrDefault(t => t.IsSameCommand(subCommand!));
         if (method == null)
         {
-            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"No subcommand found for {subCommand} good job you found a bug in discord.");
+            await arg.RespondAsync($"No subcommand found for {subCommand} good job you found a bug in discord.");
             return;
         }
+        var responseType = method.GetCustomAttribute<ResponseTypeAttribute>() ?? new ResponseTypeAttribute();
+        await arg.RespondAsync("Thinking...", isTTS: responseType.IsTts, ephemeral: responseType.IsEphemeral);
         var parameters = method.GetParameters();
         var args = new List<object?>();
         var paramsOptions = arg.Data.Options.First().Options;
@@ -244,22 +248,41 @@ public class DiscordConnection : IDisposable
             {
                 if (parameter.IsSameCommand(paramOption.Name))
                 {
-                    switch (parameter.ParameterType)
+                    args.Add(parameter.ParameterType switch
                     {
-                        case { IsEnum: true }:
-                            args.Add(Enum.GetValues(parameter.ParameterType).GetValue((int)paramOption.Value));
-                            break;
-                        default:
-                            args.Add(paramOption.Value);
-                            break;
-                    }
+                        { IsEnum: true } => Enum.GetValues(parameter.ParameterType).GetValue(Convert.ToInt32(paramOption.Value)),
+                        { } t when t == typeof(string) => paramOption.Value,
+                        { } t when t == typeof(bool) => paramOption.Value,
+                        { } t when t == typeof(int) => Convert.ToInt32(paramOption.Value),
+                        { } t when t == typeof(ulong) => Convert.ToUInt64(paramOption.Value),
+                        { } t when t == typeof(long) => paramOption.Value,
+                        { } t when t == typeof(uint) => Convert.ToUInt32(paramOption.Value),  
+                        { } t when t == typeof(short) => Convert.ToInt16(paramOption.Value),
+                        { } t when t == typeof(ushort) => Convert.ToUInt16(paramOption.Value),
+                        { } t when t == typeof(byte) => Convert.ToByte(paramOption.Value),
+                        { } t when t == typeof(sbyte) => Convert.ToSByte(paramOption.Value),
+                        { } t when t == typeof(double) => paramOption.Value,
+                        { } t when t == typeof(float) => paramOption.Value,
+                        { } t when t == typeof(decimal) => paramOption.Value,
+                        { } t when t == typeof(DateTime) => DateTime.Parse((string)paramOption.Value),
+                        { } t when t == typeof(DateTimeOffset) => DateTimeOffset.Parse((string)paramOption.Value),
+                        { } t when t == typeof(TimeSpan) => TimeSpan.Parse((string)paramOption.Value),
+                        { } t when t == typeof(SocketRole) => paramOption.Value,
+                        { } t when t == typeof(SocketUser) => paramOption.Value,
+                        { } t when t == typeof(SocketChannel) => paramOption.Value,
+                        { } t when t == typeof(Attachment) => paramOption.Value,
+                        _ => throw new ArgumentOutOfRangeException(nameof(parameter.ParameterType), parameter.ParameterType, $"Could not match type with {parameter.ParameterType.Name}")
+                    });
                 }
             }
         }
-        while(args.Count != parameters.Length)
+        while (args.Count != parameters.Length)
             args.Add(null);
 
-        await ((Task?)method.Invoke(instance, args.ToArray()))!;
+        if (method.ReturnType == typeof(Task))
+            await ((Task?)method.Invoke(instance, args.ToArray()))!;
+        else
+            method.Invoke(instance, args.ToArray());
     }
 
     public async Task DisposeAsync()
@@ -275,6 +298,27 @@ public class DiscordConnection : IDisposable
     {
         DisposeAsync().GetAwaiter().GetResult();
     }
+
+    public bool ShouldLog(NLog.LogLevel logEventLevel)
+    {
+        return logEventLevel <= _logLevel;
+    }
+
+    public void SetLogLevel(LogLevel level)
+    {
+        _logLevel = level switch
+        {
+            LogLevel.Critical => _logLevel = NLog.LogLevel.Fatal,
+            LogLevel.Error => _logLevel = NLog.LogLevel.Error,
+            LogLevel.Warning => _logLevel = NLog.LogLevel.Warn,
+            LogLevel.Information => _logLevel = NLog.LogLevel.Info,
+            LogLevel.Debug => _logLevel = NLog.LogLevel.Debug,
+            LogLevel.Trace => _logLevel = NLog.LogLevel.Trace,
+            _ => _logLevel = NLog.LogLevel.Info
+        };
+    }
+
+    public NLog.LogLevel GetLogLevel() => _logLevel;
 }
 
 static class DiscordExtensions

@@ -1,11 +1,11 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
+using PDPWebsite;
 using PDPWebsite.Hubs;
 
-var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+var logger = LogManager.Setup().SetupExtensions(ext => ext.RegisterTarget<DiscordLogger>()).LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("Starting up");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,6 +67,8 @@ builder.Services.AddCors(o =>
 });
 
 var app = builder.Build();
+
+LogManager.Setup().SetupExtensions(s => s.RegisterServiceProvider(app.Services));
 
 app.UseRouting();
 app.UseCors();

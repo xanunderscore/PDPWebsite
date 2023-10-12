@@ -12,6 +12,7 @@ public class SlashCommandAttribute : Attribute
 {
     public string Name { get; }
     public string Description { get; }
+    public GuildPermission? Permission { get; }
 
     public SlashCommandAttribute(string name)
     {
@@ -25,11 +26,17 @@ public class SlashCommandAttribute : Attribute
         Description = description;
     }
 
+    public SlashCommandAttribute(string name, string description, GuildPermission permission) : this(name, description)
+    {
+        Permission = permission;
+    }
+
     public void SetBuilder(SlashCommandBuilder builder)
     {
         builder.WithName(Name);
         if (!string.IsNullOrWhiteSpace(Description))
             builder.WithDescription(Description);
+        builder.WithDefaultMemberPermissions(Permission);
     }
 
     public void SetBuilder(SlashCommandOptionBuilder builder)
@@ -37,6 +44,21 @@ public class SlashCommandAttribute : Attribute
         builder.WithName(Name);
         if (!string.IsNullOrWhiteSpace(Description))
             builder.WithDescription(Description);
+        if(Permission.HasValue)
+            throw new InvalidOperationException("Permission cannot be set on a sub command or argument");
+    }
+}
+
+[AttributeUsage(AttributeTargets.Method)]
+public class ResponseTypeAttribute : Attribute
+{
+    public bool IsEphemeral { get; }
+    public bool IsTts { get; }
+
+    public ResponseTypeAttribute(bool isEphemeral = false, bool isTts = false)
+    {
+        IsEphemeral = isEphemeral;
+        IsTts = isTts;
     }
 }
 
