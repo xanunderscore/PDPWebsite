@@ -38,6 +38,9 @@ export function Header() {
                             <Link to="/about" className='nav-link'>About</Link>
                         </li>
                         <li className='nav-item'>
+                            <Link to="/schedule" className='nav-link'>Schedule</Link>
+                        </li>
+                        <li className='nav-item'>
                             <Link to="/slideshow" className='nav-link'>Slideshow</Link>
                         </li>
                         {auth.user && <li className='nav-item'>

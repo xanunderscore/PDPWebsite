@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 using NLog.Web;
@@ -18,6 +19,7 @@ builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     o.JsonSerializerOptions.Converters.Add(new UlongStringConverter());
+    o.JsonSerializerOptions.Converters.Add(new TimeSpanStringConverter());
 });
 builder.Services.AddRouting(o => o.LowercaseUrls = true);
 builder.Services.AddSingleton<EnvironmentContainer>();
@@ -29,7 +31,9 @@ builder.Services.AddScoped<AuthFilter>();
 builder.Services.AddDbContext<Database>(conf => conf.UseNpgsql("Database=pdp;Username=postgres;Password=postgres;Host=localhost;"));
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Version = "v1", Description = "PDPWebsite API surface" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Version = "v1", Description = "PDPWebsite API surface" });
+    c.MapType<TimeSpan>(() => new OpenApiSchema { Type = "string", Format = "hh':'mm" });
+    c.MapType<DateTime>(() => new OpenApiSchema { Type = "string", Format = "yyyy-MM-dd'T'hh:mm:ssZZ" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"GUID Token of the current logged in discord user",
@@ -57,6 +61,7 @@ builder.Services.AddSignalR().AddJsonProtocol(opt =>
 {
     opt.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     opt.PayloadSerializerOptions.Converters.Add(new UlongStringConverter());
+    opt.PayloadSerializerOptions.Converters.Add(new TimeSpanStringConverter());
 });
 builder.Services.AddCors(o =>
 {
@@ -102,5 +107,18 @@ public class UlongStringConverter : JsonConverter<ulong>
     public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value.ToString());
+    }
+}
+
+public class TimeSpanStringConverter : JsonConverter<TimeSpan>
+{
+    public override TimeSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return TimeSpan.Parse(reader.GetString()!, new DateTimeFormatInfo { ShortTimePattern = "hh':'mm" });
+    }
+
+    public override void Write(Utf8JsonWriter writer, TimeSpan value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString("hh':'mm"));
     }
 }

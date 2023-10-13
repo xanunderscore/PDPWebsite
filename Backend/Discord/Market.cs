@@ -5,7 +5,7 @@ using Discord.WebSocket;
 
 namespace PDPWebsite.Discord;
 
-[SlashCommand("market", "Market related commands")]
+[SlashCommand("market", "Market related commands"), AllowedChannel(1065695099285155980)]
 public class Market : ISlashCommandProcessor
 {
     private readonly UniversalisClient _universalisClient;

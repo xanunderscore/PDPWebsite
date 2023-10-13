@@ -12,6 +12,7 @@ import SignalRProvider from "./components/signalr";
 import RequestProvider from "./components/request";
 import SlideshowPage from "./pages/slideshow";
 import { Login, Logout } from "./pages/loginout";
+var Schedule = lazy(() => import("./pages/schedule"));
 var Home = lazy(() => import("./pages/home"));
 var About = lazy(() => import("./pages/about"));
 
@@ -35,6 +36,7 @@ function Index() {
                                                 <Route path="/logout" element={<Logout />} />
                                                 <Route path="/slideshow" element={<SlideshowPage />} />
                                                 <Route path="/about" element={<About />} />
+                                                <Route path="/schedule" element={<Schedule />} />
                                             </Routes>
                                         </div>
                                     </Suspense>

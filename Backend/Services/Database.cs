@@ -1,4 +1,6 @@
-﻿namespace PDPWebsite.Services;
+﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+namespace PDPWebsite.Services;
 
 public class Database : DbContext
 {

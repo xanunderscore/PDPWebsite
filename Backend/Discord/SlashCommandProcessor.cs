@@ -62,6 +62,17 @@ public class ResponseTypeAttribute : Attribute
     }
 }
 
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
+public class AllowedChannelAttribute : Attribute
+{
+    public ulong ChannelId { get; }
+
+    public AllowedChannelAttribute(ulong channelId)
+    {
+        ChannelId = channelId;
+    }
+}   
+
 public static class Extensions
 {
     public static bool IsSameCommand(this Type type, string name)

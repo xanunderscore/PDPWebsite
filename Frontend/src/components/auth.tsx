@@ -51,17 +51,17 @@ export function AuthProvider(props: any) {
         }
     }
 
-    async function check() {
-        var resp = await request("/api/auth/me", {
-            method: "GET",
-        });
-        if (resp.status === 200) {
-            setUser(await resp.json());
-        }
-        else {
-            setUser(null);
-        }
-    }
+    // async function check() {
+    //     var resp = await request("/api/auth/me", {
+    //         method: "GET",
+    //     });
+    //     if (resp.status === 200) {
+    //         setUser(await resp.json());
+    //     }
+    //     else {
+    //         setUser(null);
+    //     }
+    // }
 
     async function refresh() {
         var token = getCookie("token")?.value;

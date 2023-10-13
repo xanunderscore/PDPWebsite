@@ -1,6 +1,8 @@
-﻿namespace PDPWebsite.Models;
+﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-public record Schedule(Guid Id, string Name, ulong HostId, TimeSpan Duration, DateTime At)
+namespace PDPWebsite.Models;
+
+public record Schedule(Guid? Id, string Name, ulong HostId, TimeSpan Duration, DateTime At)
 {
     public List<SignUp> Signups { get; set; } // unused due to cross server requirement not being met
 }

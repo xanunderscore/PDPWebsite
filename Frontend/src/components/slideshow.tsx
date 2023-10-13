@@ -21,14 +21,14 @@ function shuffle<T>(array: T[]): T[] {
 
 export default function Slideshow() {
     const [images, setImages] = useState<string[]>([]);
-    const [spoilerImages, setSpoilerImages] = useState<string[]>([]); // currently not in use due to no toggle for spoilers
+    // const [spoilerImages, setSpoilerImages] = useState<string[]>([]); // currently not in use due to no toggle for spoilers
     const [currentImage, setCurrentImage] = useState<string>("");
     const [nextImage, setNextImage] = useState<string>("");
     const [lastUpdate, setLastUpdate] = useState<{ time: Date, delta: number }>({ time: new Date(), delta: 0 });
     const [state, setState] = useState<"shifting" | "shifted" | "shifted-prepared">("shifted");
     const [blured, setBlured] = useState<boolean>(false);
     const [unblured, setUnblured] = useState<boolean>(false);
-    const loadDelays = [10000, 50000, 2000];
+    const loadDelays = [1000, 5000, 2000];
 
     async function getImages(path?: string) {
         const resp = await fetch("https://pdp.wildwolf.dev/files/victoryposes" + (path ? path : ""));
@@ -40,10 +40,10 @@ export default function Slideshow() {
     useEffect(() => {
         getImages().then(
             (data) => {
-                getImages(data[0]).then(
-                    (spoilerData) => setSpoilerImages(shuffle(spoilerData)),
-                    (err) => console.error(err)
-                );
+                // getImages(data[0]).then(
+                //     (spoilerData) => setSpoilerImages(shuffle(spoilerData)),
+                //     (err) => console.error(err)
+                // );
                 data = shuffle(data.slice(1));
                 setImages(data);
                 setCurrentImage(data[0]);

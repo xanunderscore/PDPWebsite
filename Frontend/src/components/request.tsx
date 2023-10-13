@@ -1,5 +1,4 @@
 import { useContext, createContext, useState } from "react";
-import { useAuth } from "./auth";
 import Loader from "./loader";
 
 const RequestContext = createContext<{

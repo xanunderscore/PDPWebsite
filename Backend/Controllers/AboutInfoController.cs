@@ -1,4 +1,5 @@
-﻿using PDPWebsite.Hubs;
+﻿using Discord.WebSocket;
+using PDPWebsite.Hubs;
 
 namespace PDPWebsite.Controllers;
 
@@ -30,9 +31,18 @@ public class AboutInfoController : ControllerBase
                 continue;
             ret.Add(aboutInfo.Any(t => t.Id == socketGuildUser.Id)
                 ? AboutInfoExtended.FromInfo(aboutInfo.First(t => t.Id == socketGuildUser.Id), socketGuildUser, role!)
-                : new AboutInfoExtended(socketGuildUser.Id, "", role!.Name, role.Color.ToString()!, socketGuildUser.GetAvatarUrl(), socketGuildUser.DisplayName, null));
+                : new AboutInfoExtended(socketGuildUser.Id, "", role!.Name, role.Color.ToString()!, socketGuildUser.GetDisplayAvatarUrl(), socketGuildUser.DisplayName, null));
         }
         return Ok(ret);
+    }
+
+    [HttpGet, ServiceFilter(typeof(AuthFilter))]
+    [Route("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        var aboutInfo = await _database.AboutInfos.ToListAsync();
+        var users = _discord.Guild!.GetRoleUsers(1065654859094822993).OrderBy(t => t.Id).Concat(_discord.Guild!.GetRoleUsers(1065988868152766527).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1158395243494899742).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1065662664434516069).OrderBy(t => t.Id)).DistinctBy(t => t.Id).ToArray();
+        return Ok(users.Select(t => new { t.Id, Name = aboutInfo.FirstOrDefault(f => f.Id == t.Id)?.VisualName ?? t.DisplayName, Avatar = t.GetDisplayAvatarUrl() }));
     }
 
     [HttpPut, ServiceFilter(typeof(AuthFilter))]
@@ -52,7 +62,7 @@ public class AboutInfoController : ControllerBase
             }
         }
 
-        if(string.IsNullOrWhiteSpace(aboutInfo.VisualName))
+        if (string.IsNullOrWhiteSpace(aboutInfo.VisualName))
             aboutInfo.VisualName = null;
 
         if (await _database.AboutInfos.AnyAsync(t => t.Id == aboutInfo.Id))

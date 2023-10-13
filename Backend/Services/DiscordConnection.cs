@@ -44,7 +44,7 @@ public class DiscordConnection : IDisposable
         });
         DiscordClient.Log += Log;
         DiscordClient.Ready += Ready;
-        DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
+        // DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
@@ -101,7 +101,7 @@ public class DiscordConnection : IDisposable
     private async Task Ready()
     {
         SetActivity();
-        CreateCommands();
+        // CreateCommands();
         LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
         Guild = DiscordClient.GetGuild(1065654204129083432);
         OnReady?.Invoke();
@@ -227,14 +227,20 @@ public class DiscordConnection : IDisposable
         var type = _slashCommandProcessors.FirstOrDefault(t => t.IsSameCommand(command));
         if (type == null)
         {
-            await arg.RespondAsync($"No command found for {command} good job you found a bug in discord.");
+            await arg.RespondAsync($"No command found for {command}... good job you found a bug in discord.", ephemeral: true);
+            return;
+        }
+        var channels = type.GetCustomAttributes<AllowedChannelAttribute>().Select(t => t.ChannelId).ToArray();
+        if (channels.Any() && !channels.Contains(arg.Channel.Id) && arg.Channel.Id != 1126938489322221598)
+        {
+            await arg.RespondAsync($"This command can only be used in the following channels: {string.Join(", ", channels.Select(t => $"<#{t}>"))}", ephemeral: true);
             return;
         }
         var instance = ActivatorUtilities.CreateInstance(_provider, type, arg);
         var method = type.GetMethods().FirstOrDefault(t => t.IsSameCommand(subCommand!));
         if (method == null)
         {
-            await arg.RespondAsync($"No subcommand found for {subCommand} good job you found a bug in discord.");
+            await arg.RespondAsync($"No sub command found for {subCommand}... good job you found a bug in discord.", ephemeral: true);
             return;
         }
         var responseType = method.GetCustomAttribute<ResponseTypeAttribute>() ?? new ResponseTypeAttribute();
