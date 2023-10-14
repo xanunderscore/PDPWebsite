@@ -51,13 +51,13 @@ export default function About() {
                 <h1>About</h1>
             </div>
             <div className="row d-flex justify-content-center">
-                {users && users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={{ ...user, canEdit: auth.user && (auth.user.role === "Admin" || auth.user.role === "Mods" || auth.user.role === "Devs" || user.id === auth.user.id) }} refresh={getUsers} /></div>)}
+                {users && users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={{ ...user, canEdit: auth.user && (auth.user.role === "Admin" || auth.user.role === "Mods" || auth.user.role === "Devs" || user.id === auth.user.id) }} /></div>)}
             </div>
         </div>
     );
 }
 
-function UserCard(props: { user: User & { canEdit: boolean }, refresh?: () => void }) {
+function UserCard(props: { user: User & { canEdit: boolean } }) {
     const request = useRequest().request;
     const setModal = useModal();
     const formRef = useRef<HTMLDivElement>(null);
@@ -124,7 +124,6 @@ function UserCard(props: { user: User & { canEdit: boolean }, refresh?: () => vo
         }).then(
             (resp) => {
                 if (resp.status === 200) {
-                    props.refresh();
                     setModal(null);
                 }
                 else {

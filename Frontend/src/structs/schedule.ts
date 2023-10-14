@@ -17,6 +17,10 @@ export class Schedule {
         this.at = at;
     }
 
+    static constructorFromResponse(response: ScheduleResponse) {
+        return new Schedule(response.id, response.name, response.hostId, response.hostName, response.duration, response.at);
+    }
+
     getSelector() {
         var start = this.getStart();
         return start.toLocal().toFormat("yyyy-MM-dd'T'HH:mm");

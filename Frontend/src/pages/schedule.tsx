@@ -1,5 +1,5 @@
 import { useState, CSSProperties, useEffect, useRef, lazy } from "react";
-import { Schedule } from "../structs/schedule";
+import { Schedule, ScheduleResponse } from "../structs/schedule";
 import "@popperjs/core";
 import { Tooltip } from "bootstrap";
 import { useRequest } from "../components/request";
@@ -58,18 +58,18 @@ export default function ScheduleRoot() {
         return () => clearInterval(inter);
     }, [setCurTime]);
 
-    function add(args: { schedule: Schedule, nextWeek: boolean }) {
+    function add(args: { schedule: ScheduleResponse, nextWeek: boolean }) {
         if (args.nextWeek)
-            setNextSchedules([...nextSchedules, args.schedule]);
+            setNextSchedules([...nextSchedules, Schedule.constructorFromResponse(args.schedule)]);
         else
-            setSchedule([...schedules, args.schedule]);
+            setSchedule([...schedules, Schedule.constructorFromResponse(args.schedule)]);
     }
 
-    function update(args: { schedule: Schedule, nextWeek: boolean }) {
+    function update(args: { schedule: ScheduleResponse, nextWeek: boolean }) {
         if (args.nextWeek)
-            setNextSchedules(nextSchedules.map(t => t.id === args.schedule.id ? args.schedule : t));
+            setNextSchedules(nextSchedules.map(t => t.id === args.schedule.id ? Schedule.constructorFromResponse(args.schedule) : t));
         else
-            setSchedule(schedules.map(t => t.id === args.schedule.id ? args.schedule : t));
+            setSchedule(schedules.map(t => t.id === args.schedule.id ? Schedule.constructorFromResponse(args.schedule) : t));
     }
 
     function remove(args: string) {
@@ -117,9 +117,7 @@ export default function ScheduleRoot() {
                     <ScheduleTable style={{ position: "relative", left: showing === "week" ? 0 : "-100%" }} dates={dates} schedules={schedules} times={times} curTime={curTime} />
                     <ScheduleTable style={{ position: "absolute", left: showing === "next" ? 0 : "100%" }} dates={nextDates} schedules={nextSchedules} times={times} curTime={curTime} />
                 </div>}
-            {auth && <ScheduleEditor schedules={[...schedules, ...nextSchedules]} mobile={mobile} update={() => {
-                getSchedule();
-            }} />}
+            {auth && <ScheduleEditor schedules={[...schedules, ...nextSchedules]} mobile={mobile} />}
         </div>
     );
 }

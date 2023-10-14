@@ -19,9 +19,7 @@ public class ScheduleController : ControllerBase
 
     private DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
 
-    [HttpGet]
-    [Route("week")]
-    public async Task<IActionResult> GetWeekSchedule()
+    private Tuple<DateTimeOffset, DateTimeOffset> GetWeek(bool nextWeek = false)
     {
         var first = GetThisWeek();
         first = first.DayOfWeek switch
@@ -35,7 +33,14 @@ public class ScheduleController : ControllerBase
             _ => first
         };
         first = new DateTimeOffset(first.Year, first.Month, first.Day, 0, 0, 0, first.Offset);
-        var last = first.AddDays(7);
+        return nextWeek ? Tuple.Create(first.AddDays(7), first.AddDays(14)) : new Tuple<DateTimeOffset, DateTimeOffset>(first, first.AddDays(7));
+    }
+
+    [HttpGet]
+    [Route("week")]
+    public async Task<IActionResult> GetWeekSchedule()
+    {
+        var (first, last) = GetWeek();
         var schedules = await _database.Schedules.ToListAsync();
         return Ok(schedules.Where(t => t.At >= first && t.At < last).Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
     }
@@ -44,19 +49,7 @@ public class ScheduleController : ControllerBase
     [Route("nextweek")]
     public async Task<IActionResult> GetNextWeekSchedule()
     {
-        var first = GetThisWeek();
-        first = first.DayOfWeek switch
-        {
-            DayOfWeek.Wednesday => first.AddDays(-1),
-            DayOfWeek.Thursday => first.AddDays(-2),
-            DayOfWeek.Friday => first.AddDays(-3),
-            DayOfWeek.Saturday => first.AddDays(-4),
-            DayOfWeek.Sunday => first.AddDays(-5),
-            DayOfWeek.Monday => first.AddDays(-6),
-            _ => first
-        };
-        first = first.AddDays(7);
-        var last = first.AddDays(7);
+        var (first, last) = GetWeek(true);
         var schedules = await _database.Schedules.ToListAsync();
         return Ok(schedules.Where(t => t.At >= first && t.At < last).Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
     }
@@ -77,7 +70,7 @@ public class ScheduleController : ControllerBase
         var schedule = scheduleHttp.GetSchedule();
         var added = _database.Schedules.Add(schedule);
         await _database.SaveChangesAsync();
-        await _hub.Clients.All.SendAsync("ScheduleAdded", new { Schedule = ScheduleHttp.FromSchedule(added.Entity, _discord, _database), NextWeek = GetThisWeek().AddDays(7) >= schedule.At });
+        await _hub.Clients.All.SendAsync("ScheduleAdded", new { Schedule = ScheduleHttp.FromSchedule(added.Entity, _discord, _database), NextWeek = GetWeek(true).Item1 <= schedule.At });
         return Ok();
     }
 
@@ -93,7 +86,8 @@ public class ScheduleController : ControllerBase
                 .SetProperty(k => k.At, schedule.At)
             );
         await _database.SaveChangesAsync();
-        await _hub.Clients.All.SendAsync("ScheduleUpdated", new { Schedule = ScheduleHttp.FromSchedule(schedule.GetSchedule(), _discord, _database), NextWeek = GetThisWeek().AddDays(7) >= schedule.At });
+        var scheduleReturn = await _database.Schedules.FirstAsync(t => t.Id == schedule.Id);
+        await _hub.Clients.All.SendAsync("ScheduleUpdated", new { Schedule = ScheduleHttp.FromSchedule(scheduleReturn, _discord, _database), NextWeek = GetWeek(true).Item1 <= schedule.At });
         return Ok();
     }
 

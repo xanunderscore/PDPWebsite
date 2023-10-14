@@ -5,7 +5,7 @@ import { DateTime } from "luxon";
 import { Dropdown } from "bootstrap";
 import { useRequest } from "./request";
 
-export default function ScheduleEditor(props: { schedules: Schedule[], update: () => void, mobile: boolean }) {
+export default function ScheduleEditor(props: { schedules: Schedule[], mobile: boolean }) {
     const modal = useModal();
 
     return (
@@ -13,7 +13,7 @@ export default function ScheduleEditor(props: { schedules: Schedule[], update: (
             <div className="d-flex mb-3">
                 <h2 className="me-auto">Host Section</h2>
                 <div className="d-flex flex-wrap align-content-center">
-                    <button className="btn btn-primary" onClick={() => modal(<ScheduleEditModal schedule={new Schedule("", "", "", "", "00:00", DateTime.local().toFormat("yyyy-MM-dd'T'hh:mm"))} update={props.update} />)}>Add new event</button>
+                    <button className="btn btn-primary" onClick={() => modal(<ScheduleEditModal schedule={new Schedule("", "", "", "", "00:00", DateTime.local().toFormat("yyyy-MM-dd'T'hh:mm"))} />)}>Add new event</button>
                 </div>
             </div>
             <ul className="list-group" style={{ paddingLeft: "calc(var(--bs-gutter-x) * 0.5)" }}>
@@ -24,8 +24,8 @@ export default function ScheduleEditor(props: { schedules: Schedule[], update: (
                         <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Duration: </b>{schedule.duration}</span>
                         <span className={"me-auto" + (props.mobile ? " col-12" : "")}><b>At: </b>{schedule.getStart().toLocal().toLocaleString(DateTime.DATETIME_MED)}</span>
                         <div className="d-flex flex-wrap align-content-center">
-                            <button className="btn btn-danger me-2" onClick={() => modal(<ScheduleDeleteModal schedule={schedule} update={props.update} />)} >Delete</button>
-                            <button className="btn btn-secondary" onClick={() => modal(<ScheduleEditModal schedule={schedule} update={props.update} />)}>Edit</button>
+                            <button className="btn btn-danger me-2" onClick={() => modal(<ScheduleDeleteModal schedule={schedule} />)} >Delete</button>
+                            <button className="btn btn-secondary" onClick={() => modal(<ScheduleEditModal schedule={schedule} />)}>Edit</button>
                         </div>
                     </div>
                 </li>)}
@@ -34,7 +34,7 @@ export default function ScheduleEditor(props: { schedules: Schedule[], update: (
     );
 }
 
-function ScheduleDeleteModal(props: { schedule: Schedule, update: () => void }) {
+function ScheduleDeleteModal(props: { schedule: Schedule }) {
     const modal = useModal();
     const request = useRequest().request;
 
@@ -50,7 +50,6 @@ function ScheduleDeleteModal(props: { schedule: Schedule, update: () => void }) 
         });
 
         modal(null);
-        props.update();
     }
 
     return (<>
@@ -70,7 +69,7 @@ function ScheduleDeleteModal(props: { schedule: Schedule, update: () => void }) 
     </>);
 }
 
-function ScheduleEditModal(props: { schedule: Schedule, update: () => void }) {
+function ScheduleEditModal(props: { schedule: Schedule }) {
     const modal = useModal();
     const [schedule, setSchedule] = useState(props.schedule);
     const [hosts, setHosts] = useState<{ id: string, name: string, avatar: string }[]>([]);
@@ -113,7 +112,6 @@ function ScheduleEditModal(props: { schedule: Schedule, update: () => void }) {
         if (!res.ok)
             return;
         modal(null);
-        props.update();
     }
 
     async function update() {
@@ -133,7 +131,6 @@ function ScheduleEditModal(props: { schedule: Schedule, update: () => void }) {
         if (!res.ok)
             return;
         modal(null);
-        props.update();
     }
 
     function save() {
