@@ -28,7 +28,7 @@ export default function Slideshow() {
     const [state, setState] = useState<"shifting" | "shifted" | "shifted-prepared">("shifted");
     const [blured, setBlured] = useState<boolean>(false);
     const [unblured, setUnblured] = useState<boolean>(false);
-    const loadDelays = [1000, 5000, 2000];
+    const loadDelays = [10000, 50000, 20000];
 
     async function getImages(path?: string) {
         const resp = await fetch("https://pdp.wildwolf.dev/files/victoryposes" + (path ? path : ""));

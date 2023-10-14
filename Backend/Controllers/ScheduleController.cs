@@ -17,7 +17,7 @@ public class ScheduleController : ControllerBase
         _hub = hub;
     }
 
-    private DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
+    private DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
 
     [HttpGet]
     [Route("week")]
@@ -34,6 +34,7 @@ public class ScheduleController : ControllerBase
             DayOfWeek.Monday => first.AddDays(-6),
             _ => first
         };
+        first = new DateTimeOffset(first.Year, first.Month, first.Day, 0, 0, 0, first.Offset);
         var last = first.AddDays(7);
         var schedules = await _database.Schedules.ToListAsync();
         return Ok(schedules.Where(t => t.At >= first && t.At < last).Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));

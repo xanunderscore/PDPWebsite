@@ -13,11 +13,11 @@ export default function ScheduleEditor(props: { schedules: Schedule[], update: (
             <div className="d-flex mb-3">
                 <h2 className="me-auto">Host Section</h2>
                 <div className="d-flex flex-wrap align-content-center">
-                    <button className="btn btn-primary" onClick={() => modal(<ScheduleEditModal schedule={new Schedule("", "", "", "", "00:00:00", DateTime.local().toLocaleString())} update={props.update} />)}>Add new event</button>
+                    <button className="btn btn-primary" onClick={() => modal(<ScheduleEditModal schedule={new Schedule("", "", "", "", "00:00", DateTime.local().toFormat("yyyy-MM-dd'T'hh:mm"))} update={props.update} />)}>Add new event</button>
                 </div>
             </div>
             <ul className="list-group" style={{ paddingLeft: "calc(var(--bs-gutter-x) * 0.5)" }}>
-                {props.schedules.sort((a, b) => a.getStart().diff(b.getStart(), "days").days).map((schedule) => <li className="list-group-item">
+                {props.schedules.sort((a, b) => a.getStart().diff(b.getStart(), "days").days).map((schedule) => <li className="list-group-item" key={schedule.id}>
                     <div className="d-flex flex-wrap">
                         <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Name: </b>{schedule.name}</span>
                         <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Host: </b>{schedule.hostName}</span>
@@ -41,7 +41,7 @@ function ScheduleDeleteModal(props: { schedule: Schedule, update: () => void }) 
     const schedule = props.schedule;
 
     async function del() {
-        var res = await request("/api/schedule/delete", {
+        await request("/api/schedule/delete", {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json"
@@ -168,7 +168,7 @@ function ScheduleEditModal(props: { schedule: Schedule, update: () => void }) {
                         </>}
                     </button>
                     <ul className="dropdown-menu" style={{ maxHeight: "20rem", overflowY: "scroll" }}>
-                        {hosts.map((host) => <li><a className="dropdown-item" href="#" onClick={(e) => {
+                        {hosts.map((host) => <li key={host.id} ><a className="dropdown-item" href="#" onClick={(e) => {
                             e.preventDefault();
                             setSchedule(new Schedule(schedule.id, schedule.name, host.id, host.name, schedule.duration, schedule.at));
                             dropdown?.hide();
@@ -177,18 +177,22 @@ function ScheduleEditModal(props: { schedule: Schedule, update: () => void }) {
                 </div>
             </div>
             <div className="form-group">
-                <label htmlFor="duration">Duration</label>
-                <input type="time" className="form-control" id="duration" value={schedule.duration} onChange={(e) => {
-                    e.preventDefault();
-                    setSchedule(new Schedule(schedule.id, schedule.name, schedule.hostId, schedule.hostName, e.target.value, schedule.at));
-                }} />
-            </div>
-            <div className="form-group">
-                <label htmlFor="at">At</label>
-                <input type="datetime-local" className="form-control" id="at" value={schedule.getSelector()} onChange={(e) => {
+                <label htmlFor="from">From</label>
+                <input type="datetime-local" className="form-control" id="from" value={schedule.getSelector()} onChange={(e) => {
                     e.preventDefault();
                     setSchedule(new Schedule(schedule.id, schedule.name, schedule.hostId, schedule.hostName, schedule.duration, DateTime.fromFormat(e.target.value, "yyyy-MM-dd'T'HH:mm").toUTC().toISO()));
                 }} />
+            </div>
+            <div className="form-group">
+                <label htmlFor="to">To</label>
+                <input type="datetime-local" className="form-control" id="to" value={schedule.getSelectorEnd()} onChange={(e) => {
+                    e.preventDefault();
+                    var to = DateTime.fromISO(e.target.value).toUTC();
+                    var from = schedule.getStart();
+                    var duration = to.diff(from, ["minutes", "hours"]);
+                    var time = `${Math.floor(duration.hours)}:${Math.floor(duration.minutes / 5) * 5}`;
+                    setSchedule(new Schedule(schedule.id, schedule.name, schedule.hostId, schedule.hostName, time, schedule.at));
+                }} step={5 * 60} max={8 * 60 * 60} />
             </div>
         </div>
         <div className="modal-footer">

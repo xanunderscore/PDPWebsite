@@ -22,6 +22,11 @@ export class Schedule {
         return start.toLocal().toFormat("yyyy-MM-dd'T'HH:mm");
     }
 
+    getSelectorEnd() {
+        var start = this.getEnd();
+        return start.toLocal().toFormat("yyyy-MM-dd'T'HH:mm");
+    }
+
     getStart() {
         return DateTime.fromISO(this.at).setZone("America/Los_Angeles");
     }
@@ -32,4 +37,13 @@ export class Schedule {
         var minutes = parseInt(times[1]);
         return this.getStart().plus({ hours: hours, minutes: minutes });
     }
+}
+
+export interface ScheduleResponse {
+    id: string;
+    name: string;
+    hostId: string;
+    hostName: string;
+    duration: string;
+    at: string;
 }

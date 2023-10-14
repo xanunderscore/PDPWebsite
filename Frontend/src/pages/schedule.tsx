@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, lazy } from "react";
+import { useState, CSSProperties, useEffect, useRef, lazy } from "react";
 import { Schedule } from "../structs/schedule";
 import "@popperjs/core";
 import { Tooltip } from "bootstrap";
 import { useRequest } from "../components/request";
 import { DateTime } from "luxon";
 import { useAuth } from "../components/auth";
+import { useSignalR } from "../components/signalr";
 const ScheduleEditor = lazy(() => import("../components/scheduleEditor"));
 
 function getFirstDate() {
@@ -24,7 +25,7 @@ function getDates(type: "week" | "next") {
     if (type === "next")
         date = date.plus({ weeks: 1 });
     for (var i = 0; i < 7; i++) {
-        dates.push(date.plus({ days: i }).toLocaleString({ year: "2-digit", month: "2-digit", day: "2-digit" }));
+        dates.push(date.plus({ days: i }).toLocaleString({ year: "2-digit", month: "2-digit", day: "2-digit" }, { locale: "en-GB" }));
     }
     return dates;
 }
@@ -32,21 +33,53 @@ function getDates(type: "week" | "next") {
 function getTimes() {
     var times: string[] = [];
     for (var i = 0; i < 24; i++) {
-        times.push(getFirstDate().plus({ hours: i }).toLocaleString(DateTime.TIME_SIMPLE));
+        times.push(getFirstDate().plus({ hours: i }).toLocaleString(DateTime.TIME_24_SIMPLE, { locale: "en-GB" }));
     }
     return times;
 }
 
 export default function ScheduleRoot() {
     const [schedules, setSchedule] = useState<Schedule[]>([]);
-    const [nextSchedule, setNextSchedule] = useState<Schedule[]>([]);
+    const [nextSchedules, setNextSchedules] = useState<Schedule[]>([]);
     const [showing, setShowing] = useState<"week" | "next">("week");
+    const [curTime, setCurTime] = useState<DateTime>(DateTime.utc());
+    const signalr = useSignalR();
     const auth = useAuth().user;
     const request = useRequest().request;
 
     useEffect(() => {
         getSchedule();
     }, [setSchedule]);
+
+    useEffect(() => {
+        const inter = setInterval(() => {
+            setCurTime(DateTime.utc());
+        }, 10000);
+        return () => clearInterval(inter);
+    }, [setCurTime]);
+
+    function add(args: { schedule: Schedule, nextWeek: boolean }) {
+        if (args.nextWeek)
+            setNextSchedules([...nextSchedules, args.schedule]);
+        else
+            setSchedule([...schedules, args.schedule]);
+    }
+
+    function update(args: { schedule: Schedule, nextWeek: boolean }) {
+        if (args.nextWeek)
+            setNextSchedules(nextSchedules.map(t => t.id === args.schedule.id ? args.schedule : t));
+        else
+            setSchedule(schedules.map(t => t.id === args.schedule.id ? args.schedule : t));
+    }
+
+    function remove(args: string) {
+        setNextSchedules(nextSchedules.filter(t => t.id !== args));
+        setSchedule(schedules.filter(t => t.id !== args));
+    }
+
+    signalr.useSignalREffect("ScheduleAdded", add, [schedules, nextSchedules]);
+    signalr.useSignalREffect("ScheduleUpdated", update, [schedules, nextSchedules]);
+    signalr.useSignalREffect("ScheduleDeleted", remove, [schedules, nextSchedules]);
 
     async function getSchedule() {
         var res = await request("/api/schedule/week");
@@ -59,15 +92,12 @@ export default function ScheduleRoot() {
         if (!resNext.ok)
             return;
         var next = (await resNext.json()) as Schedule[];
-        setNextSchedule(next.map(t => new Schedule(t.id, t.name, t.hostId, t.hostName, t.duration, t.at)));
+        setNextSchedules(next.map(t => new Schedule(t.id, t.name, t.hostId, t.hostName, t.duration, t.at)));
     }
 
     const dates = getDates("week");
     const nextDates = getDates("next");
     const times = getTimes();
-
-    const backgroundColor = "rgba(0,0,0,0.75)";
-    const borderColor = "rgba(128,128,128,0.5)";
 
     const mobile = mobileCheck();
 
@@ -82,51 +112,55 @@ export default function ScheduleRoot() {
                     {(showing === "week" && <button className="btn btn-primary" onClick={() => setShowing("next")}>Show next week</button>) || <button className="btn btn-primary" onClick={() => setShowing("week")}>Show this week</button>}
                 </div>}
             </div>
-            {(mobile && <SchedulePhone schedules={schedules} />) ||
-                <div style={{ position: "relative", marginRight: "calc(var(--bs-gutter-x) * -0.5)", marginLeft: "calc(var(--bs-gutter-x) * -0.5)", overflowX: "clip" }}>
-                    <div style={{ position: "absolute", paddingRight: "calc(var(--bs-gutter-x) * 0.5)", paddingLeft: "calc(var(--bs-gutter-x) * 0.5)", top: 0, left: showing === "week" ? 0 : "-100%", transition: "0.3s left ease-in-out", width: "100%" }}>
-                        <div className="row" style={{ marginLeft: 45 }}>
-                            {dates.map((date, i) => <div className="text-center" style={{ width: "calc(100% / 7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? "1rem" : undefined, borderTopRightRadius: i === 6 ? "1rem" : undefined }} key={date}>{date}</div>)}
-                        </div>
-                        {times.map((time, i) => <div className="row" style={{ lineHeight: 2.25 }}>
-                            <span className="text-center" style={{ padding: 0, width: 58.56, marginRight: "calc(var(--bs-gutter-x) * 0.5)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? ".5rem" : undefined, borderBottomLeftRadius: i === 23 ? ".5rem" : undefined }}>{time}</span>
-                            <div className="row" style={{ width: "calc(100% - 58.56px)", padding: 0 }}>
-                                {dates.map((date, k) => <div style={{ width: "calc(100%/7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderBottomRightRadius: i === 23 && k === 6 ? ".5rem" : undefined }}></div>)}
-                            </div>
-                        </div>)}
-                        <div style={{ position: "absolute", top: 0, left: 59, width: "calc(100% - 59px)", height: "100%" }}>
-                            <div style={{ position: "relative" }}>
-                                {schedules.map((schedule) => <ScheduleCard schedule={schedule} schedules={schedules} />)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ position: "absolute", paddingRight: "calc(var(--bs-gutter-x) * 0.5)", paddingLeft: "calc(var(--bs-gutter-x) * 0.5)", top: 0, left: showing === "next" ? 0 : "100%", transition: "0.3s left ease-in-out", width: "100%" }}>
-                        <div className="row" style={{ marginLeft: 45 }}>
-                            {nextDates.map((date, i) => <div className="text-center" style={{ width: "calc(100% / 7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? "1rem" : undefined, borderTopRightRadius: i === 6 ? "1rem" : undefined }} key={date}>{date}</div>)}
-                        </div>
-                        {times.map((time, i) => <div className="row" style={{ lineHeight: 2.25 }}>
-                            <span className="text-center" style={{ padding: 0, width: 58.56, marginRight: "calc(var(--bs-gutter-x) * 0.5)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? ".5rem" : undefined, borderBottomLeftRadius: i === 23 ? ".5rem" : undefined }}>{time}</span>
-                            <div className="row" style={{ width: "calc(100% - 58.56px)", padding: 0 }}>
-                                {nextDates.map((date, k) => <div style={{ width: "calc(100%/7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderBottomRightRadius: i === 23 && k === 6 ? ".5rem" : undefined }}></div>)}
-                            </div>
-                        </div>)}
-                        <div style={{ position: "absolute", top: 0, left: 59, width: "calc(100% - 59px)", height: "100%" }}>
-                            <div style={{ position: "relative" }}>
-                                {nextSchedule.map((schedule) => <ScheduleCard schedule={schedule} schedules={nextSchedule} />)}
-                            </div>
-                        </div>
-                    </div>
+            {(mobile && <SchedulePhone schedules={schedules} curTime={curTime} />) ||
+                <div style={{ position: "relative", marginRight: "calc(var(--bs-gutter-x) * -0.5)", marginLeft: "calc(var(--bs-gutter-x) * -0.5)", overflow: "clip" }}>
+                    <ScheduleTable style={{ position: "relative", left: showing === "week" ? 0 : "-100%" }} dates={dates} schedules={schedules} times={times} curTime={curTime} />
+                    <ScheduleTable style={{ position: "absolute", left: showing === "next" ? 0 : "100%" }} dates={nextDates} schedules={nextSchedules} times={times} curTime={curTime} />
                 </div>}
-            {auth && <ScheduleEditor schedules={[...schedules, ...nextSchedule]} mobile={mobile} update={() => {
+            {auth && <ScheduleEditor schedules={[...schedules, ...nextSchedules]} mobile={mobile} update={() => {
                 getSchedule();
             }} />}
         </div>
     );
 }
 
-function SchedulePhone(props: { schedules: Schedule[] }) {
+function ScheduleTable(props: { schedules: Schedule[], dates: string[], times: string[], style: CSSProperties, curTime: DateTime }) {
+    const { schedules, dates, times, style, curTime } = props;
+
+    const nowColor = "rgba(255,255,102,0.5)";
+    const offset = curTime.diff(DateTime.fromFormat(dates[0] + "T" + times[0], "dd/MM/yy'T'HH:mm", { zone: "America/Los_Angeles" }), "hours").hours * 42.5 - 8;
+    const leftOffset = Math.floor(offset / (24 * 42.5)) * (100 / 7);
+    const topOffset = offset % (24 * 42.5);
+
+    const backgroundColor = "rgba(0,0,0,0.75)";
+    const borderColor = "rgba(128,128,128,0.5)";
+
+    return (<div style={{ ...style, paddingRight: "calc(var(--bs-gutter-x) * 0.5)", paddingLeft: "calc(var(--bs-gutter-x) * 0.5)", top: 0, transition: "0.3s left ease-in-out", width: "100%" }}>
+        <div className="row" style={{ marginLeft: 45 }}>
+            {dates.map((date, i) => <div className="text-center" style={{ width: "calc(100% / 7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? "1rem" : undefined, borderTopRightRadius: i === 6 ? "1rem" : undefined }} key={style.position + date}>{date}</div>)}
+        </div>
+        {times.map((time, i) => <div className="row" style={{ lineHeight: 2.25 }} key={style.position + time}>
+            <span className="text-center" style={{ padding: 0, width: 58.56, marginRight: "calc(var(--bs-gutter-x) * 0.5)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderTopLeftRadius: i === 0 ? ".5rem" : undefined, borderBottomLeftRadius: i === 23 ? ".5rem" : undefined }}>{time}</span>
+            <div className="row" style={{ width: "calc(100% - 58.56px)", padding: 0 }}>
+                {dates.map((date, k) => <div style={{ width: "calc(100%/7)", backgroundColor: backgroundColor, border: borderColor + " solid 0.5px", borderBottomRightRadius: i === 23 && k === 6 ? ".5rem" : undefined }} key={style.position + time + date}></div>)}
+            </div>
+        </div>)}
+        <div style={{ position: "absolute", top: 0, left: 59, width: "calc(100% - 59px)", height: "100%" }}>
+            <div style={{ position: "relative" }}>
+                {schedules.map((schedule) => <ScheduleCard schedule={schedule} schedules={schedules} key={schedule.id} curTime={curTime} />)}
+            </div>
+            {offset > 0 && <div style={{ position: "relative", right: 0, width: `${(100 / 7)}%`, top: topOffset + 29, left: `${leftOffset}%`, border: "7px solid transparent", borderLeft: `7px solid ${nowColor}`, borderRight: `7px solid ${nowColor}` }}><div style={{ height: 2, backgroundColor: nowColor }}></div></div>}
+        </div>
+    </div>);
+}
+
+function SchedulePhone(props: { schedules: Schedule[], curTime: DateTime }) {
+    const { schedules, curTime } = props;
     const dates = getDates("week");
     const times = getTimes();
+
+    const nowColor = "rgba(255,255,102,0.5)";
+    const offset = curTime.diff(DateTime.fromFormat(dates[0] + "T" + times[0], "dd/MM/yy'T'HH:mm", { zone: "America/Los_Angeles" }), "hours").hours * 42.5 - 8;
 
     const backgroundColor = "rgba(0,0,0,0.75)";
     const borderColor = "rgba(128,128,128,0.5)";
@@ -139,7 +173,8 @@ function SchedulePhone(props: { schedules: Schedule[] }) {
             </div>)}
         </>))}
         <div style={{ position: "absolute", top: 0, right: 0, width: "calc(100vw / 12 * 7)", marginRight: "calc(var(--bs-gutter-x) * -0.5)" }}>
-            {props.schedules.map((schedule) => <ScheduleCardModule schedule={schedule} schedules={props.schedules} />)}
+            {schedules.map((schedule) => <ScheduleCardMobile schedule={schedule} schedules={schedules} curTime={curTime} />)}
+            <div style={{ position: "relative", right: 0, width: "100%", top: offset, border: "7px solid transparent", borderLeft: `7px solid ${nowColor}`, borderRight: `7px solid ${nowColor}` }}><div style={{ height: 2, backgroundColor: nowColor }}></div></div>
         </div>
     </div>);
 }
@@ -180,9 +215,10 @@ function getScheduleOffset(schedule: Schedule, schedules: Schedule[]) {
         if (endEnd < 0) {
             bit |= 128;
         }
-        if (bit === bitCheck)
+
+        if (bit === bitCheck || bit === 37)
             return -1;
-        if (bit === 165 || bit === 45)
+        if (bit === 165 || bit === 45 || bit === 52)
             return 1;
         return 0;
     }
@@ -197,8 +233,8 @@ function getScheduleOffset(schedule: Schedule, schedules: Schedule[]) {
     return { width: width, offset: offset };
 }
 
-function ScheduleCardModule(props: { schedule: Schedule, schedules: Schedule[] }) {
-    const { schedule, schedules } = props;
+function ScheduleCardMobile(props: { schedule: Schedule, schedules: Schedule[], curTime: DateTime }) {
+    const { schedule, schedules, curTime } = props;
     const height = 42.5 * schedule.getEnd().diff(schedule.getStart(), "hours").hours;
     const divRef = useRef<HTMLDivElement>(null);
 
@@ -210,7 +246,7 @@ function ScheduleCardModule(props: { schedule: Schedule, schedules: Schedule[] }
 
     const offsetTop = (time: DateTime) => {
         var hours = time.diff(firstDate, "hours").hours;
-        return 29 + 42.5 * hours;
+        return 42.5 * hours;
     }
 
     const title = `${schedule.name}
@@ -227,22 +263,23 @@ function ScheduleCardModule(props: { schedule: Schedule, schedules: Schedule[] }
             return;
         var tooltip = new Tooltip(divRef.current, { container: "body", title: title, placement: "auto", html: true });
         return () => tooltip.dispose();
-    }, [divRef]);
+    }, [divRef, schedule]);
 
     const wid = (100 * width);
     const left = wid * offset;
+    const backgroundColor = schedule.getStart().diff(curTime, "hours").hours < 0 ? (schedule.getEnd().diff(curTime, "hours").hours < 0 ? "rgba(64,64,64,0.75)" : "rgba(95,40,42, 0.75)") : "rgba(133, 12, 16, 0.75)";
 
     return (
         <div style={{ position: "absolute", top: offsetTop(schedule.getStart()), width: `${wid}%`, left: `${left}%`, overflow: "hidden", cursor: "help" }} ref={divRef}>
-            <div style={{ backgroundColor: "rgba(133, 12, 16, 0.75)", border: "rgba(128,128,128,0.75) solid 1px", borderRadius: "1rem", height: height, width: "100%" }} className="d-flex flex-wrap align-content-center justify-content-center">
+            <div style={{ backgroundColor: backgroundColor, border: "rgba(128,128,128,0.75) solid 1px", borderRadius: "1rem", height: height, width: "100%", transition: "backgroundColor 0.2s linear" }} className="d-flex flex-wrap align-content-center justify-content-center">
                 <p className="text-center text-break" style={{ margin: 0, }}>{schedule.name}<br />[ <span className="fs-sub">{schedule.hostName.split(' ')[0]}</span> ]</p>
             </div>
         </div>
     );
 }
 
-function ScheduleCard(props: { schedule: Schedule, schedules: Schedule[] }) {
-    const { schedule, schedules } = props;
+function ScheduleCard(props: { schedule: Schedule, schedules: Schedule[], curTime: DateTime }) {
+    const { schedule, schedules, curTime } = props;
     const height = 42.5 * schedule.getEnd().diff(schedule.getStart(), "hours").hours;
     const divRef = useRef<HTMLDivElement>(null);
 
@@ -278,9 +315,11 @@ function ScheduleCard(props: { schedule: Schedule, schedules: Schedule[] }) {
 
     const left = (100 / 7) * (width * offset + offsetLeft(schedule.getStart()));
 
+    const backgroundColor = schedule.getStart().diff(curTime, "hours").hours < 0 ? (schedule.getEnd().diff(curTime, "hours").hours < 0 ? "rgba(64,64,64,0.75)" : "rgba(95,40,42, 0.75)") : "rgba(133, 12, 16, 0.75)";
+
     return (
         <div style={{ position: "absolute", top: offsetTop(schedule.getStart()), left: `${left}%`, maxWidth: "calc(100% / 7)", width: `calc(calc(100% / 7) * ${width})`, overflow: "hidden", cursor: "help" }} ref={divRef}>
-            <div style={{ backgroundColor: "rgba(133, 12, 16, 0.75)", border: "rgba(128,128,128,0.75) solid 1px", borderRadius: "1rem", height: height, width: "100%" }} className="d-flex flex-wrap align-content-center justify-content-center">
+            <div style={{ backgroundColor: backgroundColor, border: "rgba(128,128,128,0.75) solid 1px", borderRadius: "1rem", height: height, width: "100%", transition: "backgroundColor 0.2s linear" }} className="d-flex flex-wrap align-content-center justify-content-center">
                 <p className="text-center text-break" style={{ margin: 0, }}>{schedule.name}<br />[ <span className="fs-sub">{schedule.hostName.split(' ')[0]}</span> ]</p>
             </div>
         </div>

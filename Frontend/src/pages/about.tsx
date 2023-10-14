@@ -3,9 +3,11 @@ import { useRequest } from "../components/request";
 import { useAuth } from "../components/auth";
 import { useModal } from "../components/modal";
 import { User } from "../structs/user";
+import { useSignalR } from "../components/signalr";
 
 export default function About() {
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<User[]>(null);
+    const signalr = useSignalR();
     const request = useRequest().request;
     const auth = useAuth();
 
@@ -19,6 +21,26 @@ export default function About() {
         }
     }
 
+    function update(args: User) {
+        console.log(args);
+        console.log(users);
+        var user = users.map((u) => {
+            if (u.id !== args.id) return u;
+            u.description = args.description;
+            u.visualName = args.visualName;
+            return u;
+        });
+        setUsers(user);
+    }
+
+    function remove(args: [string]) {
+        var user = users.filter((u) => !args.includes(u.id));
+        setUsers(user);
+    }
+
+    signalr.useSignalREffect("AboutInfoUpdated", update, [users]);
+    signalr.useSignalREffect("AboutInfoDeleted", remove, [users]);
+
     useEffect(() => {
         getUsers();
     }, [setUsers]);
@@ -29,7 +51,7 @@ export default function About() {
                 <h1>About</h1>
             </div>
             <div className="row d-flex justify-content-center">
-                {users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={{ ...user, canEdit: auth.user && (auth.user.role === "Admin" || auth.user.role === "Mods" || auth.user.role === "Devs" || user.id === auth.user.id) }} refresh={getUsers} /></div>)}
+                {users && users.map((user) => <div className="col-12 col-md-7 col-lg-5 col-xl-4" key={user.id}><UserCard user={{ ...user, canEdit: auth.user && (auth.user.role === "Admin" || auth.user.role === "Mods" || auth.user.role === "Devs" || user.id === auth.user.id) }} refresh={getUsers} /></div>)}
             </div>
         </div>
     );
@@ -44,7 +66,7 @@ function UserCard(props: { user: User & { canEdit: boolean }, refresh?: () => vo
         var r = parseInt(rgb.substring(0, 2), 16);
         var g = parseInt(rgb.substring(2, 4), 16);
         var b = parseInt(rgb.substring(4, 6), 16);
-        return (r * 0.299 + g * 0.587 + b * 0.114) > 128 ? "#000000AA" : "#FFFFFFAA";
+        return (r * 0.299 + g * 0.587 + b * 0.114) > 128 ? "#000000CC" : "#FFFFFFAA";
     }
 
     function editClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
