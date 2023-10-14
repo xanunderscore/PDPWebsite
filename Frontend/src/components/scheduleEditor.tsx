@@ -55,10 +55,12 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
             acc[cur.week][cur.day].push(cur);
             return acc;
         }, {});
+        var t = props.schedules[0].getStart();
+        console.log(t.toUnixInteger(), t.offset);
         var buffer = Object.keys(schedulesByDay).map((week) => {
             return `Week ${week}\n` + Object.keys(schedulesByDay[week]).map((day) => {
                 return `**${day}**\n` + schedulesByDay[week][day].map((schedule) => {
-                    return `- ${schedule.name}: <t:${schedule.time.toLocal().toUnixInteger() - schedule.time.toLocal().offset * 60}:f> [${schedule.host}]`;
+                    return `- ${schedule.name}: <t:${schedule.time.toUnixInteger() - 120 * 60}:f> [${schedule.host}]`;
                 }).join("\n");
             }).join("\n\n");
         }).join("\n\n");
@@ -211,8 +213,8 @@ function ScheduleEditModal(props: { schedule: Schedule }) {
                 <label htmlFor="name">Name</label>
                 <input type="text" className="form-control" id="name" value={schedule.name} onChange={(e) => {
                     e.preventDefault();
-                    setSchedule(new Schedule(schedule.id, e.target.value, schedule.hostId, schedule.hostName, schedule.duration, schedule.at));
-                }} />
+                    setSchedule(new Schedule(schedule.id, e.target.value.substring(0, Math.min(e.target.value.length, 32)), schedule.hostId, schedule.hostName, schedule.duration, schedule.at));
+                }} maxLength={32} />
             </div>
             <div className="form-group">
                 <span>Host: </span>

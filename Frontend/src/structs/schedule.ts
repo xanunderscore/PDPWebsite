@@ -32,7 +32,7 @@ export class Schedule {
     }
 
     getStart() {
-        return DateTime.fromISO(this.at, { zone: "utc" }).setZone("America/Los_Angeles");
+        return DateTime.fromISO(this.at).setZone("America/Los_Angeles");
     }
 
     getEnd() {
