@@ -8,11 +8,70 @@ import { useRequest } from "./request";
 export default function ScheduleEditor(props: { schedules: Schedule[], mobile: boolean }) {
     const modal = useModal();
 
+    function exportBuffer() {
+        var schedulesByDay = props.schedules.map((schedule) => {
+            var startOfDay = schedule.getStart().setZone("America/Los_Angeles").startOf("day");
+            var weekday = startOfDay.weekday;
+            var week = startOfDay.weekNumber;
+            var day = "";
+            switch (weekday) {
+                case 1:
+                    day = "Monday";
+                    week -= 1;
+                    break;
+                case 2:
+                    day = "Tuesday";
+                    break;
+                case 3:
+                    day = "Wednesday";
+                    break;
+                case 4:
+                    day = "Thursday";
+                    break;
+                case 5:
+                    day = "Friday";
+                    break;
+                case 6:
+                    day = "Saturday";
+                    break;
+                case 7:
+                    day = "Sunday";
+                    break;
+            }
+            return {
+                name: schedule.name,
+                host: schedule.hostName.split(" ")[0],
+                time: schedule.getStart(),
+                day: day,
+                week: week
+            };
+        }).reduce((acc: { [key: string | number]: { [key: string]: { name: string, host: string, time: DateTime, day: string, week: number }[] } }, cur) => {
+            if (!acc[cur.week]) {
+                acc[cur.week] = {};
+            }
+            if (!acc[cur.week][cur.day]) {
+                acc[cur.week][cur.day] = [];
+            }
+            acc[cur.week][cur.day].push(cur);
+            return acc;
+        }, {});
+        var buffer = Object.keys(schedulesByDay).map((week) => {
+            return `Week ${week}\n` + Object.keys(schedulesByDay[week]).map((day) => {
+                return `**${day}**\n` + schedulesByDay[week][day].map((schedule) => {
+                    return `- ${schedule.name}: <t:${schedule.time.toLocal().toUnixInteger() - schedule.time.toLocal().offset * 60}:f> [${schedule.host}]`;
+                }).join("\n");
+            }).join("\n\n");
+        }).join("\n\n");
+        //send buffer into clipboard
+        navigator.clipboard.writeText(buffer);
+    }
+
     return (
         <div className="mt-4 row pb-2 pt-2 rounded-3" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
             <div className="d-flex mb-3">
                 <h2 className="me-auto">Host Section</h2>
                 <div className="d-flex flex-wrap align-content-center">
+                    <button className="btn btn-success me-2" onClick={() => exportBuffer()} >Export Schedule</button>
                     <button className="btn btn-primary" onClick={() => modal(<ScheduleEditModal schedule={new Schedule("", "", "", "", "00:00", DateTime.local().toFormat("yyyy-MM-dd'T'hh:mm"))} />)}>Add new event</button>
                 </div>
             </div>
@@ -30,7 +89,7 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
                     </div>
                 </li>)}
             </ul>
-        </div>
+        </div >
     );
 }
 
