@@ -43,7 +43,20 @@
       "react-hooks/exhaustive-deps": "off",
       "jsx-a11y/img-redundant-alt": "off",
       "jsx-a11y/anchor-is-valid": "off",
-      "no-useless-escape": "off"
+      "no-useless-escape": "off",
+      "@typescript-eslint/member-delimiter-style": [
+        "error",
+        {
+          "multiline": {
+            "delimiter": "semi",
+            "requireLast": true
+          },
+          "singleline": {
+            "delimiter": "comma",
+            "requireLast": false
+          }
+        }
+      ]
     }
   },
   "browserslist": {

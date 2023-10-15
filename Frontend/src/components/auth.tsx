@@ -4,11 +4,11 @@ import { deleteCookie, getCookie, setCookie } from "./cookie";
 
 export const AuthContext = createContext<{
     user: {
-        name: string,
-        id: string,
-        avatar: string,
-        role: string,
-        token: string
+        name: string;
+        id: string;
+        avatar: string;
+        role: string;
+        token: string;
     } | null;
     login: (uid: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -20,11 +20,11 @@ export function useAuth() {
 
 export function AuthProvider(props: any) {
     const [user, setUser] = useState<{
-        name: string,
-        id: string,
-        avatar: string,
-        role: string,
-        token: string
+        name: string;
+        id: string;
+        avatar: string;
+        role: string;
+        token: string;
     } | null>(null);
     const requestContext = useRequest();
     const request = requestContext.request;
