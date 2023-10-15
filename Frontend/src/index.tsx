@@ -12,14 +12,15 @@ function Index() {
     return (
         <StrictMode>
             <Suspense fallback={<Loader />}>
-                <SignalRProvider>
-                    <RequestProvider>
-                        <AuthProvider>
-                            <App />
-                        </AuthProvider>
-                    </RequestProvider>
-                </SignalRProvider>
-                <Slideshow />
+                <Slideshow>
+                    <SignalRProvider>
+                        <RequestProvider>
+                            <AuthProvider>
+                                <App />
+                            </AuthProvider>
+                        </RequestProvider>
+                    </SignalRProvider>
+                </Slideshow>
             </Suspense>
         </StrictMode >
     );

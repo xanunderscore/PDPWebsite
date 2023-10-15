@@ -3,13 +3,13 @@ import Loader from "./loader";
 
 const RequestContext = createContext<{
     setAuth: React.Dispatch<React.SetStateAction<{
-        name: string,
-        id: string,
-        avatar: string,
-        role: string,
-        token: string
-    } | null>>,
-    request: (url: string, options?: RequestInit) => Promise<Response>
+        name: string;
+        id: string;
+        avatar: string;
+        role: string;
+        token: string;
+    } | null>>;
+    request: (url: string, options?: RequestInit) => Promise<Response>;
 }>({
     setAuth: () => { throw new Error("Request provider not initialized") },
     request: async () => { throw new Error("Request provider not initialized") }
@@ -21,11 +21,11 @@ export function useRequest() {
 
 export default function RequestProvider({ children }: { children: React.ReactNode }) {
     const [auth, setAuth] = useState<{
-        name: string,
-        id: string,
-        avatar: string,
-        role: string,
-        token: string
+        name: string;
+        id: string;
+        avatar: string;
+        role: string;
+        token: string;
     } | null>(null);
     const [requesting, setRequesting] = useState<boolean>(false);
 

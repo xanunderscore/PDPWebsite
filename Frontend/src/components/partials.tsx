@@ -1,20 +1,26 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
 import "./partials.scss";
 import { Collapse } from 'bootstrap';
 import { createRef, useEffect, useState } from 'react';
+import { useSlideshow } from './slideshow';
 
 export function Header() {
     const auth = useAuth();
+    const location = useLocation();
+    const { setBlured, navContent } = useSlideshow();
     const collapseRef = createRef<HTMLDivElement>();
     const [collpase, setCollapse] = useState<Collapse>(null);
+    const [toggled, setToggled] = useState<boolean>(false);
 
     useEffect(() => {
         setCollapse(new Collapse(collapseRef.current!, { toggle: false }));
     }, [setCollapse]);
 
     function toggleBlur() {
-        localStorage.setItem("blured", (localStorage.getItem("blured") === "true" ? "false" : "true"));
+        localStorage.removeItem("blured");
+        setBlured(blured => blured === "unblured" ? "unblured" : blured === "blured" ? "default" : "blured");
+        setToggled(toggled => !toggled);
     }
 
     return (
@@ -29,8 +35,8 @@ export function Header() {
                         <span className="navbar-toggler-icon"></span>
                     </button>
                 </div>
-                <div className='collapse navbar-collapse' ref={collapseRef}>
-                    <ul className='navbar-nav me-auto'>
+                <div className='collapse navbar-collapse justify-content-between' ref={collapseRef}>
+                    <ul className='navbar-nav'>
                         <li className='nav-item'>
                             <Link to="/" className='nav-link'>Home</Link>
                         </li>
@@ -47,11 +53,12 @@ export function Header() {
                             <Link to="https://pdp.wildwolf.dev/files" className='nav-link'>Files</Link>
                         </li>}
                     </ul>
-                    <ul className='navbar-nav ms-auto'>
-                        <div className='form-check form-switch rounded-5' style={{ paddingLeft: "3rem", paddingRight: ".5rem", backgroundColor: "rgba(0,0,0,0.25)" }}>
-                            <input className='form-check-input' type='checkbox' id='darkSwitch' onClick={toggleBlur} />
+                    {navContent}
+                    <ul className='navbar-nav'>
+                        {location.pathname !== "/slideshow" && <div className='form-check form-switch rounded-5' style={{ paddingLeft: "3rem", paddingRight: ".5rem", backgroundColor: "rgba(0,0,0,0.25)" }}>
+                            <input className='form-check-input' type='checkbox' id='darkSwitch' onChange={toggleBlur} checked={toggled} />
                             <label className='form-check-label' htmlFor='darkSwitch'>Blur background</label>
-                        </div>
+                        </div>}
                         <li className='nav-item'>
                             {auth?.user ? <Link to="/logout" className='nav-link'>Logout</Link> : <Link to="/login" className='nav-link'>Login</Link>}
                         </li>
