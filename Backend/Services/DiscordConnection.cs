@@ -29,6 +29,8 @@ public class DiscordConnection : IDisposable
         new("Universalis", ActivityType.Watching),
         new("with the market"),
         new("with the economy"),
+        new("Catching errors", ActivityType.CustomStatus),
+        new("the schedule", ActivityType.Watching)
     };
 
     public static Action? OnReady { get; set; }
@@ -44,7 +46,7 @@ public class DiscordConnection : IDisposable
         });
         DiscordClient.Log += Log;
         DiscordClient.Ready += Ready;
-        // DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
+        DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
@@ -101,7 +103,7 @@ public class DiscordConnection : IDisposable
     private async Task Ready()
     {
         SetActivity();
-        // CreateCommands();
+        CreateCommands();
         LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
         Guild = DiscordClient.GetGuild(1065654204129083432);
         OnReady?.Invoke();
