@@ -8,6 +8,7 @@ import { Login, Logout } from "./pages/loginout";
 var Schedule = lazy(() => import("./pages/schedule"));
 var Home = lazy(() => import("./pages/home"));
 var About = lazy(() => import("./pages/about"));
+var Editor = lazy(() => import("./pages/editor"));
 
 const baseUrl = document.getElementsByTagName("base")[0].getAttribute("href");
 
@@ -25,6 +26,7 @@ export default function App() {
                             <Route path="/slideshow" element={<SlideshowPage />} />
                             <Route path="/about" element={<About />} />
                             <Route path="/schedule" element={<Schedule />} />
+                            <Route path="/editor" element={<Editor />} />
                         </Routes>
                     </div>
                 </Modal>
