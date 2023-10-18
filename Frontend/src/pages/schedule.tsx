@@ -9,7 +9,7 @@ import { useSignalR } from "../components/signalr";
 const ScheduleEditor = lazy(() => import("../components/scheduleEditor"));
 
 function getFirstDate() {
-    return DateTime.local().setZone("America/Los_Angeles").startOf("week").plus({ days: 1 });
+    return DateTime.local().setZone("America/Los_Angeles").minus({ days: 1 }).startOf("week").plus({ days: 1 });
 }
 
 function mobileCheck() {

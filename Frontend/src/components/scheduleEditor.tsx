@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useModal } from "../components/modal";
 import { Schedule } from "../structs/schedule";
 import { DateTime } from "luxon";
-import { Dropdown } from "bootstrap";
+import { Dropdown, Tooltip } from "bootstrap";
 import { useRequest } from "./request";
 
 export default function ScheduleEditor(props: { schedules: Schedule[], mobile: boolean }) {
@@ -60,12 +60,13 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
         var buffer = Object.keys(schedulesByDay).map((week) => {
             return `Week ${week}\n` + Object.keys(schedulesByDay[week]).map((day) => {
                 return `**${day}**\n` + schedulesByDay[week][day].map((schedule) => {
-                    return `- ${schedule.name}: <t:${schedule.time.toUnixInteger() - 120 * 60}:f> [${schedule.host}]`;
+                    return `- ${schedule.name}: <t:${schedule.time.toUnixInteger()}:f> [${schedule.host}]`;
                 }).join("\n");
             }).join("\n\n");
         }).join("\n\n");
         //send buffer into clipboard
         navigator.clipboard.writeText(buffer);
+        alert("Copied to clipboard");
     }
 
     return (
@@ -78,26 +79,46 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
                 </div>
             </div>
             <ul className="list-group" style={{ paddingLeft: "calc(var(--bs-gutter-x) * 0.5)" }}>
-                {props.schedules.sort((a, b) => a.getStart().diff(b.getStart(), "days").days).map((schedule) => <li className="list-group-item" key={schedule.id}>
-                    <div className="d-flex flex-wrap">
-                        <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Name: </b>{schedule.name}</span>
-                        <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Host: </b>{schedule.hostName}</span>
-                        <span className={"me-3" + (props.mobile ? " col-12" : "")}><b>Duration: </b>{schedule.duration}</span>
-                        <span className={"me-auto" + (props.mobile ? " col-12" : "")}><b>At: </b>{schedule.getStart().toLocal().toLocaleString(DateTime.DATETIME_MED)}</span>
-                        <div className="d-flex flex-wrap align-content-center">
-                            <button className="btn btn-danger me-2" onClick={() => modal(<ScheduleDeleteModal schedule={schedule} />)} >Delete</button>
-                            <button className="btn btn-secondary" onClick={() => modal(<ScheduleEditModal schedule={schedule} />)}>Edit</button>
-                        </div>
-                    </div>
-                </li>)}
+                {props.schedules.sort((a, b) => a.getStart().diff(b.getStart(), "days").days).map((schedule) => <ScheduleTableItem key={schedule.id} schedule={schedule} mobile={props.mobile} />)}
             </ul>
         </div >
+    );
+}
+
+function ScheduleTableItem(props: { schedule: Schedule, mobile: boolean }) {
+    const { schedule, mobile } = props;
+    const infoRef = useRef<HTMLElement>(null);
+
+    const modal = useModal();
+
+    useEffect(() => {
+        if (!infoRef.current)
+            return;
+        var time = "Local: " + schedule.getStart().toLocal().toLocaleString(DateTime.DATETIME_MED);
+        var tooltip = new Tooltip(infoRef.current, { container: "body", title: time, placement: "top", html: true });
+        return () => tooltip.dispose();
+    }, [infoRef]);
+
+    return (
+        <li className="list-group-item">
+            <div className="d-flex flex-wrap">
+                <span className={"me-3" + (mobile ? " col-12" : "")}><b>Name: </b>{schedule.name}</span>
+                <span className={"me-3" + (mobile ? " col-12" : "")}><b>Host: </b>{schedule.hostName}</span>
+                <span className={"me-3" + (mobile ? " col-12" : "")}><b>Duration: </b>{schedule.duration}</span>
+                <span className={"me-auto" + (mobile ? " col-12" : "")}><b>At: </b>{schedule.getStart().toLocaleString(DateTime.DATETIME_MED)}  <i ref={infoRef} className="bi bi-info-circle-fill"></i></span>
+                <div className="d-flex flex-wrap align-content-center">
+                    <button className="btn btn-danger me-2" onClick={() => modal(<ScheduleDeleteModal schedule={schedule} />)} >Delete</button>
+                    <button className="btn btn-secondary" onClick={() => modal(<ScheduleEditModal schedule={schedule} />)}>Edit</button>
+                </div>
+            </div>
+        </li>
     );
 }
 
 function ScheduleDeleteModal(props: { schedule: Schedule }) {
     const modal = useModal();
     const request = useRequest().request;
+    const infoRef = useRef<HTMLElement>(null);
 
     const schedule = props.schedule;
 
@@ -113,6 +134,14 @@ function ScheduleDeleteModal(props: { schedule: Schedule }) {
         modal(null);
     }
 
+    useEffect(() => {
+        if (!infoRef.current)
+            return;
+        var time = "Local: " + schedule.getStart().toLocal().toLocaleString(DateTime.DATETIME_MED);
+        var tooltip = new Tooltip(infoRef.current, { container: "body", title: time, placement: "top", html: true });
+        return () => tooltip.dispose();
+    }, [infoRef]);
+
     return (<>
         <div className="modal-header">
             <h5 className="modal-title">Are you sure you want to delete.</h5>
@@ -121,7 +150,7 @@ function ScheduleDeleteModal(props: { schedule: Schedule }) {
             <p className="text-center text-break"><b>Name: </b>{schedule.name}</p>
             <p className="text-center text-break"><b>Host: </b>{schedule.hostName}</p>
             <p className="text-center text-break"><b>Duration: </b>{schedule.duration}</p>
-            <p className="text-center text-break"><b>At: </b>{schedule.getStart().toLocal().toLocaleString(DateTime.DATETIME_MED)}</p>
+            <p className="text-center text-break"><b>At: </b>{schedule.getStart().toLocaleString(DateTime.DATETIME_MED)} <i ref={infoRef} className="bi bi-info-circle-fill"></i></p>
         </div>
         <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => modal(null)}>Close</button>
