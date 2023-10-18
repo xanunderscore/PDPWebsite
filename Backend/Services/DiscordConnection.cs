@@ -29,7 +29,6 @@ public class DiscordConnection : IDisposable
         new("Universalis", ActivityType.Watching),
         new("with the market"),
         new("with the economy"),
-        new("Catching errors", ActivityType.CustomStatus),
         new("the schedule", ActivityType.Watching)
     };
 
@@ -92,7 +91,7 @@ public class DiscordConnection : IDisposable
 
             var next = Games[Random.Shared.Next(Games.Count)];
             await DiscordClient.SetActivityAsync(next);
-            await Task.Delay(60000, _cts.Token);
+            await Task.Delay(TimeSpan.FromMinutes(30), _cts.Token);
             SetActivity();
         }
         catch (TaskCanceledException)
