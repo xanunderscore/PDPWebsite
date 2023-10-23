@@ -6,7 +6,6 @@ using Discord.Net;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using PDPWebsite.Discord;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace PDPWebsite.Services;
@@ -19,8 +18,7 @@ public class DiscordConnection : IDisposable
     public SocketTextChannel? LogChannel;
     private EnvironmentContainer _environmentContainer;
     private readonly IServiceProvider _provider;
-    private readonly ILogger _logger;
-    private readonly GameClient _gameClient;
+    private readonly ILogger<DiscordConnection> _logger;
     private CancellationTokenSource _cts = new();
     private Type[] _slashCommandProcessors = Array.Empty<Type>();
     private NLog.LogLevel _logLevel = NLog.LogLevel.Warn;
@@ -35,7 +33,7 @@ public class DiscordConnection : IDisposable
     public static Action? OnReady { get; set; }
     public static DiscordConnection? Instance { get; set; }
 
-    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, GameClient client, IServiceProvider provider)
+    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, IServiceProvider provider)
     {
         UniversalisClient = new UniversalisClient();
 
@@ -49,7 +47,6 @@ public class DiscordConnection : IDisposable
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
-        _gameClient = client;
         Instance = this;
     }
 
@@ -308,7 +305,7 @@ public class DiscordConnection : IDisposable
 
     public bool ShouldLog(NLog.LogLevel logEventLevel)
     {
-        return logEventLevel <= _logLevel;
+        return logEventLevel < _logLevel;
     }
 
     public void SetLogLevel(LogLevel level)
