@@ -9,21 +9,34 @@ public class AboutInfoController : ControllerBase
 {
     private readonly Database _database;
     private readonly DiscordConnection _discord;
+    private readonly EnvironmentContainer _container;
     private readonly ILogger<AboutInfoController> _logger;
     private readonly IHubContext<MainHub> _hub;
 
-    public AboutInfoController(Database database, DiscordConnection discord, IHubContext<MainHub> hub)
+    public AboutInfoController(Database database, EnvironmentContainer container, DiscordConnection discord, IHubContext<MainHub> hub)
     {
         _database = database;
+        _container = container;
         _discord = discord;
         _hub = hub;
+    }
+
+    private SocketGuildUser[] GetDiscordUsers()
+    {
+        var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
+        var users = new List<SocketGuildUser>();
+        foreach (var role in roles)
+        {
+            users.AddRange(_discord.Guild!.GetRoleUsers(role).OrderBy(t => t.Id));
+        }
+        return users.DistinctBy(t => t.Id).ToArray();
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAboutInfo()
     {
         var aboutInfo = await _database.AboutInfos.ToListAsync();
-        var users = _discord.Guild!.GetRoleUsers(1065654859094822993).OrderBy(t => t.Id).Concat(_discord.Guild!.GetRoleUsers(1065988868152766527).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1158395243494899742).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1065662664434516069).OrderBy(t => t.Id)).DistinctBy(t => t.Id).ToArray();
+        var users = GetDiscordUsers();
         var ret = new List<AboutInfoExtended>();
         foreach (var socketGuildUser in users)
         {
@@ -41,7 +54,7 @@ public class AboutInfoController : ControllerBase
     public async Task<IActionResult> GetUsers()
     {
         var aboutInfo = await _database.AboutInfos.ToListAsync();
-        var users = _discord.Guild!.GetRoleUsers(1065654859094822993).OrderBy(t => t.Id).Concat(_discord.Guild!.GetRoleUsers(1065988868152766527).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1158395243494899742).OrderBy(t => t.Id)).Concat(_discord.Guild!.GetRoleUsers(1065662664434516069).OrderBy(t => t.Id)).DistinctBy(t => t.Id).ToArray();
+        var users = GetDiscordUsers();
         return Ok(users.Select(t => new { t.Id, Name = aboutInfo.FirstOrDefault(f => f.Id == t.Id)?.VisualName ?? t.DisplayName, Avatar = t.GetDisplayAvatarUrl() }));
     }
 

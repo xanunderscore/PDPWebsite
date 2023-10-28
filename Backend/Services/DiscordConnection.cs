@@ -16,10 +16,10 @@ public class DiscordConnection : IDisposable
     public DiscordSocketClient DiscordClient { get; }
     public SocketGuild? Guild { get; private set; }
     public SocketTextChannel? LogChannel;
-    private EnvironmentContainer _environmentContainer;
+    private readonly EnvironmentContainer _environmentContainer;
     private readonly IServiceProvider _provider;
     private readonly ILogger<DiscordConnection> _logger;
-    private CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _cts = new();
     private Type[] _slashCommandProcessors = Array.Empty<Type>();
     private NLog.LogLevel _logLevel = NLog.LogLevel.Warn;
     private List<Game> Games { get; } = new()
@@ -76,6 +76,7 @@ public class DiscordConnection : IDisposable
 
     public async Task SetActivity()
     {
+#pragma warning disable CS4014
         try
         {
             if (DiscordClient.ConnectionState != ConnectionState.Connected)
@@ -94,14 +95,17 @@ public class DiscordConnection : IDisposable
         catch (TaskCanceledException)
         {
         }
+#pragma warning restore CS4014
     }
 
     private async Task Ready()
     {
+#pragma warning disable CS4014
         SetActivity();
         CreateCommands();
-        LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(1156096156124844084);
-        Guild = DiscordClient.GetGuild(1065654204129083432);
+#pragma warning restore CS4014
+        LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(ulong.Parse(_environmentContainer.Get("DISCORD_LOG_CHANNEL")));
+        Guild = DiscordClient.GetGuild(ulong.Parse(_environmentContainer.Get("DISCORD_GUILD")));
         OnReady?.Invoke();
     }
 
@@ -325,9 +329,9 @@ public class DiscordConnection : IDisposable
     public NLog.LogLevel GetLogLevel() => _logLevel;
 }
 
-static class DiscordExtensions
+static partial class DiscordExtensions
 {
-    public static Regex CapitalLetters = new("[A-Z]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    public static Regex CapitalLetters = CapitalLettersGenerator();
 
     public static async Task DownloadAllImages(this DiscordSocketClient client, ulong id)
     {
@@ -385,18 +389,6 @@ static class DiscordExtensions
         return role != null;
     }
 
-    public static void SanitizeName(this SlashCommandOptionBuilder builder)
-    {
-        var name = builder.Name;
-        var matches = CapitalLetters.Matches(name);
-        for (var index = 0; index < matches.Count; index++)
-        {
-            var match = matches[index];
-            name = name.Replace(match.Value, "-" + match.Value.ToLower());
-        }
-        builder.WithName(name.ToLower());
-    }
-
     public static string SanitizeName(this string value)
     {
         var matches = CapitalLetters.Matches(value);
@@ -407,4 +399,7 @@ static class DiscordExtensions
         }
         return value.TrimStart('-');
     }
+
+    [GeneratedRegex("[A-Z]", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
+    private static partial Regex CapitalLettersGenerator();
 }
