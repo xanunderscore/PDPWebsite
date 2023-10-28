@@ -60,7 +60,7 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
         var buffer = Object.keys(schedulesByDay).map((week) => {
             return `Week ${week}\n` + Object.keys(schedulesByDay[week]).map((day) => {
                 return `**${day}**\n` + schedulesByDay[week][day].map((schedule) => {
-                    return `- ${schedule.name}: <t:${schedule.time.toUnixInteger()}:f> [${schedule.host}]`;
+                    return `- ${schedule.name}: <t:${schedule.time.toUnixInteger()}:F> [${schedule.host}]`;
                 }).join("\n");
             }).join("\n\n");
         }).join("\n\n");
