@@ -36,11 +36,12 @@ public class AboutInfoController : ControllerBase
     public async Task<IActionResult> GetAboutInfo()
     {
         var aboutInfo = await _database.AboutInfos.ToListAsync();
+        var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
         var users = GetDiscordUsers();
         var ret = new List<AboutInfoExtended>();
         foreach (var socketGuildUser in users)
         {
-            if (!socketGuildUser.TryGetHighestRole(out var role))
+            if (!socketGuildUser.TryGetHighestRole(roles, out var role))
                 continue;
             ret.Add(aboutInfo.Any(t => t.Id == socketGuildUser.Id)
                 ? AboutInfoExtended.FromInfo(aboutInfo.First(t => t.Id == socketGuildUser.Id), socketGuildUser, role!)

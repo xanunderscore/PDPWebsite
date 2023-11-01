@@ -8,19 +8,26 @@ public class AuthController : ControllerBase
 {
     private readonly RedisClient _rClient;
     private readonly DiscordConnection _discord;
+    private readonly EnvironmentContainer _container;
 
-    public AuthController(RedisClient rClient, DiscordConnection discord)
+    public AuthController(RedisClient rClient, EnvironmentContainer container, DiscordConnection discord)
     {
         _rClient = rClient;
         _discord = discord;
+        _container = container;
     }
 
     [HttpGet]
     [Route("/api/auth/login")]
     public async Task<IActionResult> Login(ulong userId)
     {
-        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(userId);
-        var isAllowed = user.TryGetHighestRole(out _);
+        var user = _discord.Guild?.GetUser(userId);
+        var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+        var isAllowed = user.TryGetHighestRole(roles, out var role);
         if (!isAllowed)
         {
             return Unauthorized();
@@ -28,7 +35,7 @@ public class AuthController : ControllerBase
         var token = Guid.NewGuid();
         var loginRecord = new Login(token, userId);
         _rClient.SetObj(token.ToString(), loginRecord);
-        return Ok(UserReturn.FromUser(user, token.ToString()));
+        return Ok(UserReturn.FromUser(user, role, token.ToString()));
     }
 
     [HttpGet, ServiceFilter(typeof(AuthFilter))]
@@ -41,13 +48,18 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
-        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(loginRecord.DiscordId);
-        var isAllowed = user.TryGetHighestRole(out _);
+        var user = _discord.Guild?.GetUser(loginRecord.DiscordId);
+        var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+        var isAllowed = user.TryGetHighestRole(roles, out var role);
         if (!isAllowed)
         {
             return Unauthorized();
         }
-        return Ok(UserReturn.FromUser(user, token));
+        return Ok(UserReturn.FromUser(user, role, token));
     }
 
     [HttpPost, ServiceFilter(typeof(AuthFilter))]
@@ -60,14 +72,19 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
-        var user = _discord.DiscordClient.GetGuild(1065654204129083432).GetUser(loginRecord.DiscordId);
-        var isAllowed = user.TryGetHighestRole(out _);
+        var user = _discord.Guild?.GetUser(loginRecord.DiscordId);
+        var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+        var isAllowed = user.TryGetHighestRole(roles, out var role);
         if (!isAllowed)
         {
             return Unauthorized();
         }
         _rClient.SetExpire(token, TimeSpan.FromDays(7));
-        return Ok(UserReturn.FromUser(user, token));
+        return Ok(UserReturn.FromUser(user, role, token));
     }
 
     [HttpDelete]
@@ -86,9 +103,8 @@ public class AuthController : ControllerBase
 
 public record UserReturn(ulong Id, string Name, string AvatarUrl, string Role, string Token)
 {
-    public static UserReturn FromUser(SocketGuildUser user, string token)
+    public static UserReturn FromUser(SocketGuildUser user, SocketRole? role, string token)
     {
-        user.TryGetHighestRole(out var role);
         return new UserReturn(user.Id, user.DisplayName, user.GetAvatarUrl(), role!.Name, token);
     }
 }
