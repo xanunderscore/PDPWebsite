@@ -377,10 +377,16 @@ static partial class DiscordExtensions
         return role.Members;
     }
 
-    public static bool TryGetHighestRole(this SocketGuildUser user, out SocketRole? role)
+    public static bool TryGetHighestRole(this SocketGuildUser user, IEnumerable<ulong> roleList, out SocketRole? role)
     {
         var k = user.Roles;
-        return k.TryGetRole(1065654859094822993, out role) || k.TryGetRole(1065988868152766527, out role) || k.TryGetRole(1158395243494899742, out role) || k.TryGetRole(1065662664434516069, out role);
+        role = null;
+        foreach (var roleId in roleList)
+        {
+            if (k.TryGetRole(roleId, out role))
+                return true;
+        }
+        return false;
     }
 
     public static bool TryGetRole(this IEnumerable<SocketRole> roles, ulong roleId, out SocketRole? role)
