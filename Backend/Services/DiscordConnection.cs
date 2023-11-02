@@ -51,6 +51,9 @@ public class DiscordConnection : IDisposable
         DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
         DiscordClient.UserVoiceStateUpdated += UserVoiceStateUpdated;
         DiscordClient.ButtonExecuted += ButtonExecuted;
+        DiscordClient.PresenceUpdated += (_, _, _) => Task.CompletedTask;
+        DiscordClient.GuildScheduledEventStarted += _ => Task.CompletedTask;
+        DiscordClient.InviteCreated += _ => Task.CompletedTask;
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
@@ -112,6 +115,7 @@ public class DiscordConnection : IDisposable
                 {
                     _logger.LogTrace($"This was the last user that left a temp channel");
                     await before.VoiceChannel.DeleteAsync();
+                    TempChannels.Remove(before.VoiceChannel.Id);
                 }
             }
             if (after.VoiceChannel?.Id == _tempVoiceChannel.Id)
