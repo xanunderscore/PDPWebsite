@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.Net;
@@ -12,16 +13,22 @@ namespace PDPWebsite.Services;
 
 public class DiscordConnection : IDisposable
 {
-    public static UniversalisClient UniversalisClient { get; private set; } = null!;
     public DiscordSocketClient DiscordClient { get; }
     public SocketGuild? Guild { get; private set; }
     public SocketTextChannel? LogChannel;
+    /// <summary>
+    /// Key: VoiceChannelId
+    /// Value: UserId
+    /// </summary>
+    public Dictionary<ulong, ulong> TempChannels;
     private readonly EnvironmentContainer _environmentContainer;
     private readonly IServiceProvider _provider;
     private readonly ILogger<DiscordConnection> _logger;
+    private readonly RedisClient _redisClient;
     private readonly CancellationTokenSource _cts = new();
     private Type[] _slashCommandProcessors = Array.Empty<Type>();
     private NLog.LogLevel _logLevel = NLog.LogLevel.Warn;
+    private SocketVoiceChannel _tempVoiceChannel = null!;
     private List<Game> Games { get; } = new()
     {
         new("Universalis", ActivityType.Watching),
@@ -33,10 +40,8 @@ public class DiscordConnection : IDisposable
     public static Action? OnReady { get; set; }
     public static DiscordConnection? Instance { get; set; }
 
-    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, IServiceProvider provider)
+    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, RedisClient redisClient, IServiceProvider provider)
     {
-        UniversalisClient = new UniversalisClient();
-
         DiscordClient = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.All
@@ -44,10 +49,52 @@ public class DiscordConnection : IDisposable
         DiscordClient.Log += Log;
         DiscordClient.Ready += Ready;
         DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
+        DiscordClient.UserVoiceStateUpdated += UserVoiceStateUpdated;
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
+        _redisClient = redisClient;
+        TempChannels = _redisClient.GetObj<Dictionary<ulong, ulong>>("discord_temp_channels") ?? new Dictionary<ulong, ulong>();
         Instance = this;
+    }
+
+    private async Task UserVoiceStateUpdated(SocketUser user, SocketVoiceState before, SocketVoiceState after)
+    {
+        try
+        {
+            if (before.VoiceChannel == after.VoiceChannel)
+                return;
+            _logger.LogTrace($"UserVoiceStateUpdated: {user}, {before}, {after}");
+            if (before.VoiceChannel != null && (after.VoiceChannel == null || before.VoiceChannel.Id != after.VoiceChannel.Id))
+            {
+                _logger.LogTrace($"User: {user} disconnected from voice channel {before}");
+                if (before.VoiceChannel.ConnectedUsers.Count == 0 && TempChannels.ContainsKey(before.VoiceChannel.Id))
+                {
+                    _logger.LogTrace($"This was the last user that left a temp channel");
+                    await before.VoiceChannel.DeleteAsync();
+                }
+            }
+            if (after.VoiceChannel?.Id == _tempVoiceChannel.Id)
+            {
+                _logger.LogTrace($"User: {user} connected to temp voice setup.");
+                var name = _redisClient.GetObj<string>($"voice_name_{user.Id}") ?? user.Username;
+                var channel = await Guild!.CreateVoiceChannelAsync(name, x =>
+                {
+                    x.CategoryId = _tempVoiceChannel.CategoryId;
+                    x.PermissionOverwrites = new List<Overwrite>
+                    {
+                    new(Guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(connect: PermValue.Allow, viewChannel: PermValue.Allow, speak: PermValue.Allow, sendMessages: PermValue.Allow)),
+                    new(user.Id, PermissionTarget.User, new OverwritePermissions(connect: PermValue.Allow, viewChannel: PermValue.Allow, speak: PermValue.Allow, sendMessages: PermValue.Allow))
+                    };
+                });
+                TempChannels.Add(channel.Id, user.Id);
+                await ((SocketGuildUser)user).ModifyAsync(x => x.Channel = channel);
+            }
+        }
+        catch (HttpException exception)
+        {
+            _logger.LogError(exception, "UserVoiceStateUpdated");
+        }
     }
 
     public async Task Start()
@@ -106,6 +153,14 @@ public class DiscordConnection : IDisposable
 #pragma warning restore CS4014
         LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(ulong.Parse(_environmentContainer.Get("DISCORD_LOG_CHANNEL")));
         Guild = DiscordClient.GetGuild(ulong.Parse(_environmentContainer.Get("DISCORD_GUILD")));
+        _tempVoiceChannel = (SocketVoiceChannel)await DiscordClient.GetChannelAsync(ulong.Parse(_environmentContainer.Get("DISCORD_TEMP_VOICE")));
+        var regions = await DiscordClient.GetVoiceRegionsAsync();
+        var sb = new StringBuilder();
+        foreach (var region in regions)
+        {
+            sb.AppendLine($"- {region.Name} -> `{region.Id}`");
+        }
+        _logger.LogInformation(sb.ToString());
         OnReady?.Invoke();
     }
 
@@ -128,7 +183,7 @@ public class DiscordConnection : IDisposable
             await Log(new LogMessage(LogSeverity.Error, "UniversalisBot", json, exception));
         }
 
-        _slashCommandProcessors = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Any(t => t == typeof(ISlashCommandProcessor))).ToArray();
+        _slashCommandProcessors = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.GetInterfaces().Any(x => x == typeof(ISlashCommandProcessor)) && t.IsClass).ToArray();
 
         var commandBuilders = new List<SlashCommandBuilder>();
 
@@ -233,7 +288,7 @@ public class DiscordConnection : IDisposable
             return;
         }
         var channels = type.GetCustomAttributes<AllowedChannelAttribute>().Select(t => t.ChannelId).ToArray();
-        if (channels.Any() && !channels.Contains(arg.Channel.Id) && arg.Channel.Id != 1126938489322221598)
+        if (channels.Any() && !channels.Contains(arg.Channel.Id) && arg.Channel.Id != _tempVoiceChannel.Id)
         {
             await arg.RespondAsync($"This command can only be used in the following channels: {string.Join(", ", channels.Select(t => $"<#{t}>"))}", ephemeral: true);
             return;
@@ -264,7 +319,7 @@ public class DiscordConnection : IDisposable
                         { } t when t == typeof(int) => Convert.ToInt32(paramOption.Value),
                         { } t when t == typeof(ulong) => Convert.ToUInt64(paramOption.Value),
                         { } t when t == typeof(long) => paramOption.Value,
-                        { } t when t == typeof(uint) => Convert.ToUInt32(paramOption.Value),  
+                        { } t when t == typeof(uint) => Convert.ToUInt32(paramOption.Value),
                         { } t when t == typeof(short) => Convert.ToInt16(paramOption.Value),
                         { } t when t == typeof(ushort) => Convert.ToUInt16(paramOption.Value),
                         { } t when t == typeof(byte) => Convert.ToByte(paramOption.Value),
@@ -295,11 +350,11 @@ public class DiscordConnection : IDisposable
 
     public async Task DisposeAsync()
     {
+        _redisClient.SetObj("discord_temp_channels", TempChannels);
         _cts.Cancel();
         await DiscordClient.StopAsync();
         await DiscordClient.LogoutAsync();
         await DiscordClient.DisposeAsync();
-        UniversalisClient.Dispose();
     }
 
     public void Dispose()
