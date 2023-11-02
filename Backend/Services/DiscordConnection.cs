@@ -50,12 +50,52 @@ public class DiscordConnection : IDisposable
         DiscordClient.Ready += Ready;
         DiscordClient.SlashCommandExecuted += SlashCommandExecuted;
         DiscordClient.UserVoiceStateUpdated += UserVoiceStateUpdated;
+        DiscordClient.ButtonExecuted += ButtonExecuted;
         _logger = logger;
         _environmentContainer = environmentContainer;
         _provider = provider;
         _redisClient = redisClient;
         TempChannels = _redisClient.GetObj<Dictionary<ulong, ulong>>("discord_temp_channels") ?? new Dictionary<ulong, ulong>();
         Instance = this;
+    }
+
+    private async Task ButtonExecuted(SocketMessageComponent arg)
+    {
+        _logger.LogTrace($"ButtonExecuted: {arg}");
+        switch (arg.Data.CustomId)
+        {
+            case "rename":
+                var renameTextField = new TextInputBuilder()
+                    .WithPlaceholder("Enter a new name for your voice channel")
+                    .WithMinLength(1)
+                    .WithMaxLength(100)
+                    .WithCustomId("rename_id")
+                    .Build();
+                var components = new ComponentBuilder()
+                    .AddRow(new ActionRowBuilder().WithComponents(new List<IMessageComponent>{renameTextField})).Build();
+                await arg.FollowupAsync("Further input required:", components: components);
+                break;
+            case "claim":
+                var user = (SocketGuildUser)arg.User;
+                var channel = user.VoiceChannel;
+                if (!TempChannels.ContainsKey(channel.Id))
+                {
+                    await arg.RespondAsync("Channel is not a temp channel");
+                    return;
+                }
+                var ownerId = TempChannels[channel.Id];
+                if (channel.ConnectedUsers.Any(x => x.Id == ownerId))
+                {
+                    await arg.RespondAsync("Owner is still in the channel");
+                    return;
+                }
+                TempChannels[channel.Id] = user.Id;
+                await arg.RespondAsync("Claimed channel");
+                break;
+            default:
+                await arg.RespondAsync($"Could not find processor for button with id {arg.Data.CustomId}", ephemeral: true);
+                break;
+        }
     }
 
     private async Task UserVoiceStateUpdated(SocketUser user, SocketVoiceState before, SocketVoiceState after)
