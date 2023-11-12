@@ -22,7 +22,7 @@ public partial class Voice
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = "Owner is still in the channel");
             return;
         }
-        _discord.TempChannels[channel.Id] = user.Id;
+        _discord.TempChannels.AddOrUpdate(channel.Id, _ => user.Id, (_,_) => user.Id);
         await _arg.ModifyOriginalResponseAsync(msg => msg.Content = "Claimed channel");
     }
 
@@ -42,6 +42,9 @@ public partial class Voice
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = "You are not the owner of this channel");
             return;
         }
+        var names = _redisClient.GetObj<Dictionary<ulong, string>>($"voice_names") ?? new Dictionary<ulong, string>();
+        names[user.Id] = name;
+        _redisClient.SetObj($"voice_names", names);
         await channel.ModifyAsync(x =>
         {
             x.Name = name;

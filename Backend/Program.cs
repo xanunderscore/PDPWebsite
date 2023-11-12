@@ -82,7 +82,8 @@ app.UseMiddleware<OptionsMiddleware>();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller}/{action=Index}/{id?}");
-await app.Services.GetRequiredService<DiscordConnection>().Start();
+var discord = app.Services.GetRequiredService<DiscordConnection>();
+await discord.Start();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     await scope.ServiceProvider.GetRequiredService<Database>().Database.MigrateAsync();
@@ -94,6 +95,7 @@ if (app.Environment.IsDevelopment())
 }
 app.MapHub<MainHub>("/sigr");
 app.Run();
+discord.Dispose();
 
 LogManager.Shutdown();
 
