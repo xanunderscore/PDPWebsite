@@ -33,6 +33,7 @@
     "typescript": "^5.2.2"
   },
   "license": "UNLICENSED",
+  "private": true,
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
@@ -59,6 +60,15 @@
             "delimiter": "comma",
             "requireLast": false
           }
+        }
+      ],
+      "no-console": [
+        "warn",
+        {
+          "allow": [
+            "warn",
+            "error"
+          ]
         }
       ]
     }

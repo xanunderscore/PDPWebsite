@@ -13,6 +13,8 @@ export default function SignalRProvider({ children }: { children: any }) {
         url = process.env.REACT_APP_API_URL + url;
     }
 
+    return (children)
+
     return (
         <SignalRContext.Provider url={url}>
             {children}

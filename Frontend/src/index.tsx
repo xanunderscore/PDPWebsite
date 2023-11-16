@@ -10,19 +10,19 @@ const SignalRProvider = lazy(() => import("./components/signalr"));
 
 function Index() {
     return (
-        <StrictMode>
-            <Suspense fallback={<Loader />}>
-                <Slideshow>
-                    <SignalRProvider>
-                        <RequestProvider>
-                            <AuthProvider>
-                                <App />
-                            </AuthProvider>
-                        </RequestProvider>
-                    </SignalRProvider>
-                </Slideshow>
-            </Suspense>
-        </StrictMode >
+        // <StrictMode>
+        <Suspense fallback={<Loader />}>
+            <Slideshow>
+                <SignalRProvider>
+                    <RequestProvider>
+                        <AuthProvider>
+                            <App />
+                        </AuthProvider>
+                    </RequestProvider>
+                </SignalRProvider>
+            </Slideshow>
+        </Suspense>
+        // </StrictMode >
     );
 }
 

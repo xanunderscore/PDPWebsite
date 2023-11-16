@@ -214,9 +214,11 @@ function getScheduleOffset(schedule: Schedule, schedules: Schedule[]) {
             bit |= 128;
         }
 
-        if (bit === bitCheck || bit === 37)
+        // console.log(bit, a.name, b.name);
+
+        if (bit === bitCheck || bit === 37 || bit === 44)
             return -1;
-        if (bit === 165 || bit === 45 || bit === 52)
+        if (bit === 165 || bit === 45 || bit === 52 || bit === 164)
             return 1;
         return 0;
     }

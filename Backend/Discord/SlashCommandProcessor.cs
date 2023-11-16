@@ -3,11 +3,6 @@ using Discord;
 
 namespace PDPWebsite.Discord;
 
-public interface ISlashCommandProcessor<T> : ISlashCommandProcessor
-{
-    Logger<T> Logger { get; }
-}
-
 public interface ISlashCommandProcessor
 {
 }

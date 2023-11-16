@@ -67,8 +67,11 @@ public partial class DiscordConnection : IDisposable
 
     public async Task Start()
     {
-        await DiscordClient.LoginAsync(TokenType.Bot, _environmentContainer.Get("DISCORD_TOKEN"));
-        await DiscordClient.StartAsync();
+        if (!bool.Parse(_environmentContainer.Get("DISCORD_DISABLE")))
+        {
+            await DiscordClient.LoginAsync(TokenType.Bot, _environmentContainer.Get("DISCORD_TOKEN"));
+            await DiscordClient.StartAsync();
+        }
     }
 
     public Task Log(LogMessage arg)

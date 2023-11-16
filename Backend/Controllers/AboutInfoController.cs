@@ -10,7 +10,6 @@ public class AboutInfoController : ControllerBase
     private readonly Database _database;
     private readonly DiscordConnection _discord;
     private readonly EnvironmentContainer _container;
-    private readonly ILogger<AboutInfoController> _logger;
     private readonly IHubContext<MainHub> _hub;
 
     public AboutInfoController(Database database, EnvironmentContainer container, DiscordConnection discord, IHubContext<MainHub> hub)

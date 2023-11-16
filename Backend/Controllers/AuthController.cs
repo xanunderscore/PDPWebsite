@@ -19,7 +19,7 @@ public class AuthController : ControllerBase
 
     [HttpGet]
     [Route("/api/auth/login")]
-    public async Task<IActionResult> Login(ulong userId)
+    public IActionResult Login(ulong userId)
     {
         var user = _discord.Guild?.GetUser(userId);
         var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
 
     [HttpGet, ServiceFilter(typeof(AuthFilter))]
     [Route("/api/auth/me")]
-    public async Task<IActionResult> Me()
+    public IActionResult Me()
     {
         var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
@@ -64,7 +64,7 @@ public class AuthController : ControllerBase
 
     [HttpPost, ServiceFilter(typeof(AuthFilter))]
     [Route("/api/auth/refresh")]
-    public async Task<IActionResult> Refresh()
+    public IActionResult Refresh()
     {
         var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
@@ -89,7 +89,7 @@ public class AuthController : ControllerBase
 
     [HttpDelete]
     [Route("/api/auth/logout")]
-    public async Task<IActionResult> Logout(string token)
+    public IActionResult Logout(string token)
     {
         var loginRecord = _rClient.GetObj<Login>(token);
         if (loginRecord is null)

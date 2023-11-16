@@ -1,6 +1,7 @@
 ﻿using Lumina;
 using Lumina.Data;
 using Lumina.Data.Files;
+using Lumina.Excel;
 using PDPWebsite.FFXIV;
 
 namespace PDPWebsite.Services;
@@ -52,6 +53,8 @@ public class GameClient : IDisposable
     }
 
     public TexFile? GetTexFile(string path) => _gameData.GetFile<TexFile>(path);
+
+    public ExcelSheet<T>? GetSheet<T>() where T : ExcelRow => _gameData.GetExcelSheet<T>();
 
     public void Dispose()
     {

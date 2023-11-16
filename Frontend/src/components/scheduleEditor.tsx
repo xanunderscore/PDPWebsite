@@ -4,9 +4,11 @@ import { Schedule } from "../structs/schedule";
 import { DateTime } from "luxon";
 import { Dropdown, Tooltip } from "bootstrap";
 import { useRequest } from "./request";
+import { useToast } from "./toast";
 
 export default function ScheduleEditor(props: { schedules: Schedule[], mobile: boolean }) {
     const modal = useModal();
+    const toast = useToast().toast;
 
     function exportBuffer() {
         var schedulesByDay = props.schedules.map((schedule) => {
@@ -66,7 +68,7 @@ export default function ScheduleEditor(props: { schedules: Schedule[], mobile: b
         }).join("\n\n");
         //send buffer into clipboard
         navigator.clipboard.writeText(buffer);
-        alert("Copied to clipboard");
+        toast("Copied to clipboard", "Schedule Editor", "success");
     }
 
     return (

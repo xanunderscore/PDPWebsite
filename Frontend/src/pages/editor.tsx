@@ -3,12 +3,16 @@ import DOMPurify from "dompurify";
 import { parse } from "marked";
 
 import { useEffect, useRef, useState } from "react";
+import { useRequest } from "../components/request";
+import { Status } from "../components/status";
 
 export default function Editor() {
     const [markdown, setMarkdown] = useState<string>('');
     const [prevMarkdown, setPrevMarkdown] = useState<string>('');
+    const [statuses, setStatuses] = useState<Status[]>([]);
     const divRef = useRef<HTMLDivElement>(null);
     const scrollRefs = useRef<Record<string, HTMLElement>>({});
+    const request = useRequest().request;
 
     useEffect(() => {
         try {
@@ -48,26 +52,38 @@ export default function Editor() {
     }, [prevMarkdown]);
 
     useEffect(() => {
-        console.log("test");
-    }, [divRef])
+        getStatuses();
+    }, [setStatuses])
+
+    async function getStatuses() {
+        const res = await request("/api/status");
+        if (!res.ok)
+            return;
+        const statuses = await res.json() as Status[];
+        setStatuses(statuses);
+    }
 
     return (
-        <div className="mt-5 d-flex flex-grow-1">
-            <div className="col-6" style={{ borderRight: "solid 1px #333333AA" }}>
-                <MarkdownEditor
-                    style={{ height: "100%" }}
-                    value={markdown}
-                    onChange={(value, viewUpdate) => {
-                        setMarkdown(value);
-                    }}
-                    enablePreview={false}
-                />
-            </div>
-            <div className="col-6">
-                <div className="d-flex justify-content-between align-items-center p-2">
-                    <h5 className="m-0">Preview</h5>
+        <>
+            {statuses.map((status, i) => <Status key={`status_${i}`} status={status} scale={0.5} />)}
+            <div className="mt-5 d-flex flex-grow-1">
+                <div className="col-6" style={{ borderRight: "solid 1px #333333AA" }}>
+                    <MarkdownEditor
+                        style={{ height: "100%" }}
+                        value={markdown}
+                        onChange={(value, viewUpdate) => {
+                            setMarkdown(value);
+                        }}
+                        enablePreview={false}
+                    />
                 </div>
-                <div className="p-2" ref={divRef} />
-            </div>
-        </div >);
+                <div className="col-6">
+                    <div className="d-flex justify-content-between align-items-center p-2">
+                        <h5 className="m-0">Preview</h5>
+                    </div>
+                    <div className="p-2" ref={divRef} />
+                </div>
+            </div >
+        </>
+    );
 }

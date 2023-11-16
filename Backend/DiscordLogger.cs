@@ -53,7 +53,7 @@ public class DiscordLogger : TargetWithLayout
         };
     }
 
-    private async Task WriteDiscord(LogEventInfo logEvent)
+    private void WriteDiscord(LogEventInfo logEvent)
     {
         var message = Layout.Render(logEvent);
         var embed = new EmbedBuilder();
@@ -80,7 +80,7 @@ public class DiscordLogger : TargetWithLayout
             return;
         }
         if (Connection.ShouldLog(logEvent.Level))
-            return;
-        _ = WriteDiscord(logEvent);
+            return; 
+        WriteDiscord(logEvent);
     }
 }

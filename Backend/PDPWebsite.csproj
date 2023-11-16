@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <PackageReference Include="Discord.Net" Version="3.12.0" />
-    <PackageReference Include="Lumina.Excel" Version="6.5.0" />
+    <PackageReference Include="Lumina.Excel" Version="6.5.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.11">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -38,7 +38,7 @@
     <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.4" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.11" />
     <PackageReference Include="NRedisStack" Version="0.9.0" />
-    <PackageReference Include="ScottPlot" Version="5.0.8-beta" />
+    <PackageReference Include="ScottPlot" Version="5.0.9-beta" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.5.0" />
   </ItemGroup>
