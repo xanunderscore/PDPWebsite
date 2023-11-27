@@ -1,12 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-
-namespace PDPWebsite.Services;
+﻿namespace PDPWebsite.Services;
 
 public class Database : DbContext
 {
     // initialized by dbcontext
 #pragma warning disable CS8618
-    public Database(DbContextOptions<Database> options) : base(options) { }
+    public Database(DbContextOptions<Database> options) : base(options)
+    {
+    }
 #pragma warning restore
 
     public DbSet<Schedule> Schedules { get; set; }
@@ -24,14 +24,8 @@ public class Database : DbContext
                 .HasForeignKey(e => e.ScheduleId);
         });
 
-        modelBuilder.Entity<SignUp>(options =>
-        {
-            options.HasKey(e => e.Id);
-        });
+        modelBuilder.Entity<SignUp>(options => { options.HasKey(e => e.Id); });
 
-        modelBuilder.Entity<AboutInfo>(options =>
-        {
-            options.HasKey(e => e.Id);
-        });
+        modelBuilder.Entity<AboutInfo>(options => { options.HasKey(e => e.Id); });
     }
 }

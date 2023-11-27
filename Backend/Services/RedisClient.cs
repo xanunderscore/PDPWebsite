@@ -1,18 +1,18 @@
 ﻿using Newtonsoft.Json;
-using NRedisStack.RedisStackCommands;
 using StackExchange.Redis;
 
 namespace PDPWebsite.Services;
 
 public class RedisClient
 {
-    public RedisClient() {}
-
     private static readonly TimeSpan ExpireConstant = new(7, 0, 0, 0);
 
     public ConnectionMultiplexer Connection { get; set; } = ConnectionMultiplexer.Connect("localhost");
 
-    private IDatabase GetDatabase() => Connection.GetDatabase();
+    private IDatabase GetDatabase()
+    {
+        return Connection.GetDatabase();
+    }
 
     public string? Get(string key)
     {

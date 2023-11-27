@@ -18,15 +18,18 @@ public class AuthFilter : IAsyncActionFilter
             await next();
             return;
         }
+
         var token = context.HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
-        if (loginRecord is null && context.HttpContext.Request.Path.Value!.Contains("api") && !context.HttpContext.Request.Path.Value!.Contains("login"))
+        if (loginRecord is null && context.HttpContext.Request.Path.Value!.Contains("api") &&
+            !context.HttpContext.Request.Path.Value!.Contains("login"))
         {
             context.HttpContext.Response.StatusCode = 401;
             context.HttpContext.Response.ContentType = "text/plain";
             await context.HttpContext.Response.WriteAsync("Unauthorized");
             return;
         }
+
         await next();
     }
 }

@@ -8,16 +8,16 @@ namespace PDPWebsite.Services;
 
 public class GameClient : IDisposable
 {
-    private readonly GameData _gameData;
     private readonly UniversalisClient _client;
+    private readonly GameData _gameData;
 
     private readonly List<Item> _marketItems = new();
-    public IReadOnlyList<Item> MarketItems => _marketItems;
 
     public GameClient(UniversalisClient client)
     {
 #if DEBUG
-        var gameDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SquareEnix", "FINAL FANTASY XIV - A Realm Reborn", "game", "sqpack");
+        var gameDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            "SquareEnix", "FINAL FANTASY XIV - A Realm Reborn", "game", "sqpack");
 #else
         var gameDataPath = Path.Combine(AppContext.BaseDirectory, "ffxiv", "sqpack");
 #endif
@@ -32,6 +32,13 @@ public class GameClient : IDisposable
         LoadMarket().GetAwaiter().GetResult();
     }
 
+    public IReadOnlyList<Item> MarketItems => _marketItems;
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
+
     private async Task LoadMarket()
     {
         var ids = await _client.GetMarketItems();
@@ -39,7 +46,6 @@ public class GameClient : IDisposable
         var items = _gameData.Excel.GetSheet<Lumina.Excel.GeneratedSheets.Item>(Language.English);
         if (items != null)
             foreach (var item in items)
-            {
                 if (ids.Contains(item.RowId))
                     _marketItems.Add(new Item(this)
                     {
@@ -49,15 +55,15 @@ public class GameClient : IDisposable
                         Plural = item.Plural,
                         Icon = item.Icon
                     });
-            }
     }
 
-    public TexFile? GetTexFile(string path) => _gameData.GetFile<TexFile>(path);
-
-    public ExcelSheet<T>? GetSheet<T>() where T : ExcelRow => _gameData.GetExcelSheet<T>();
-
-    public void Dispose()
+    public TexFile? GetTexFile(string path)
     {
-        GC.SuppressFinalize(this);
+        return _gameData.GetFile<TexFile>(path);
+    }
+
+    public ExcelSheet<T>? GetSheet<T>() where T : ExcelRow
+    {
+        return _gameData.GetExcelSheet<T>();
     }
 }

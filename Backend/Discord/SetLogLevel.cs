@@ -7,8 +7,8 @@ namespace PDPWebsite.Discord;
 [SlashCommand("log-level", "Sets the log level for the bot", GuildPermission.ManageChannels)]
 public class SetLogLevel : ISlashCommandProcessor
 {
-    private readonly DiscordConnection _connection;
     private readonly SocketSlashCommand _arg;
+    private readonly DiscordConnection _connection;
 
     public SetLogLevel(DiscordConnection connection, SocketSlashCommand arg)
     {
@@ -16,14 +16,16 @@ public class SetLogLevel : ISlashCommandProcessor
         _arg = arg;
     }
 
-    [SlashCommand("set", "The log level to set"), ResponseType(true)]
+    [SlashCommand("set", "The log level to set")]
+    [ResponseType(true)]
     public async Task Set([SlashCommand("level", "The log level to set")] LogLevel level)
     {
         _connection.SetLogLevel(level);
         await _arg.ModifyOriginalResponseAsync(opt => opt.Content = $"Set log level to {level}");
     }
 
-    [SlashCommand("get", "Gets the current log level"), ResponseType(true)]
+    [SlashCommand("get", "Gets the current log level")]
+    [ResponseType(true)]
     public async Task Get()
     {
         var level = _connection.GetLogLevel();

@@ -2,13 +2,11 @@
 
 public class EnvironmentContainer
 {
-    public Dictionary<string, string> Config { get; set; } = new();
-
     public EnvironmentContainer(string path = "")
     {
         if (path == "")
 #if DEBUG
-            path = System.Environment.CurrentDirectory + @"\.env";
+            path = Environment.CurrentDirectory + @"\.env";
 #else
             path = Path.Combine(AppContext.BaseDirectory, ".env");
 #endif
@@ -17,6 +15,8 @@ public class EnvironmentContainer
         Load(path + ".dev");
 #endif
     }
+
+    public Dictionary<string, string> Config { get; set; } = new();
 
     public string Get(string key)
     {

@@ -18,6 +18,7 @@ public class OptionsMiddleware
             await context.Response.WriteAsync("OK");
             return;
         }
+
         await _next.Invoke(context);
     }
 }

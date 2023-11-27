@@ -17,7 +17,11 @@ public class ScheduleController : ControllerBase
         _hub = hub;
     }
 
-    private static DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
+    private static DateTimeOffset GetThisWeek()
+    {
+        return TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime,
+            TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
+    }
 
     private static Tuple<DateTimeOffset, DateTimeOffset> GetWeek(bool nextWeek = false)
     {
@@ -33,7 +37,9 @@ public class ScheduleController : ControllerBase
             _ => first
         };
         first = new DateTimeOffset(first.Year, first.Month, first.Day, 0, 0, 0, first.Offset);
-        return nextWeek ? Tuple.Create(first.AddDays(7), first.AddDays(14)) : new Tuple<DateTimeOffset, DateTimeOffset>(first, first.AddDays(7));
+        return nextWeek
+            ? Tuple.Create(first.AddDays(7), first.AddDays(14))
+            : new Tuple<DateTimeOffset, DateTimeOffset>(first, first.AddDays(7));
     }
 
     [HttpGet]
@@ -42,7 +48,8 @@ public class ScheduleController : ControllerBase
     {
         var (first, last) = GetWeek();
         var schedules = await _database.Schedules.ToListAsync();
-        return Ok(schedules.Where(t => t.At >= first && t.At < last).Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
+        return Ok(schedules.Where(t => t.At >= first && t.At < last)
+            .Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
     }
 
     [HttpGet]
@@ -51,11 +58,13 @@ public class ScheduleController : ControllerBase
     {
         var (first, last) = GetWeek(true);
         var schedules = await _database.Schedules.ToListAsync();
-        return Ok(schedules.Where(t => t.At >= first && t.At < last).Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
+        return Ok(schedules.Where(t => t.At >= first && t.At < last)
+            .Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
     }
 
 
-    [HttpGet, ServiceFilter(typeof(AuthFilter))]
+    [HttpGet]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("all")]
     public async Task<IActionResult> GetSchedule()
     {
@@ -63,18 +72,25 @@ public class ScheduleController : ControllerBase
         return Ok(schedules.Select(t => ScheduleHttp.FromSchedule(t, _discord, _database)));
     }
 
-    [HttpPost, ServiceFilter(typeof(AuthFilter))]
+    [HttpPost]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("add")]
     public async Task<IActionResult> AddSchedule([FromBody] ScheduleHttp scheduleHttp)
     {
         var schedule = scheduleHttp.GetSchedule();
         var added = _database.Schedules.Add(schedule);
         await _database.SaveChangesAsync();
-        await _hub.Clients.All.SendAsync("ScheduleAdded", new { Schedule = ScheduleHttp.FromSchedule(added.Entity, _discord, _database), NextWeek = GetWeek(true).Item1 <= schedule.At });
+        await _hub.Clients.All.SendAsync("ScheduleAdded",
+            new
+            {
+                Schedule = ScheduleHttp.FromSchedule(added.Entity, _discord, _database),
+                NextWeek = GetWeek(true).Item1 <= schedule.At
+            });
         return Ok();
     }
 
-    [HttpPut, ServiceFilter(typeof(AuthFilter))]
+    [HttpPut]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("update")]
     public async Task<IActionResult> UpdateSchedule([FromBody] ScheduleHttp schedule)
     {
@@ -84,14 +100,20 @@ public class ScheduleController : ControllerBase
                 .SetProperty(k => k.HostId, schedule.HostId)
                 .SetProperty(k => k.Duration, schedule.Duration)
                 .SetProperty(k => k.At, schedule.At)
-            );
+        );
         await _database.SaveChangesAsync();
         var scheduleReturn = await _database.Schedules.FirstAsync(t => t.Id == schedule.Id);
-        await _hub.Clients.All.SendAsync("ScheduleUpdated", new { Schedule = ScheduleHttp.FromSchedule(scheduleReturn, _discord, _database), NextWeek = GetWeek(true).Item1 <= schedule.At });
+        await _hub.Clients.All.SendAsync("ScheduleUpdated",
+            new
+            {
+                Schedule = ScheduleHttp.FromSchedule(scheduleReturn, _discord, _database),
+                NextWeek = GetWeek(true).Item1 <= schedule.At
+            });
         return Ok();
     }
 
-    [HttpDelete, ServiceFilter(typeof(AuthFilter))]
+    [HttpDelete]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("delete")]
     public async Task<IActionResult> DeleteSchedule([FromBody] Guid remove)
     {
@@ -106,7 +128,9 @@ public record ScheduleHttp(Guid? Id, string Name, ulong HostId, string? HostName
 {
     public static ScheduleHttp FromSchedule(Schedule schedule, DiscordConnection discord, Database database)
     {
-        return new ScheduleHttp(schedule.Id, schedule.Name, schedule.HostId, database.AboutInfos.FirstOrDefault(t => t.Id == schedule.HostId)?.VisualName ?? discord.Guild!.GetUser(schedule.HostId).DisplayName, schedule.Duration, schedule.At);
+        return new ScheduleHttp(schedule.Id, schedule.Name, schedule.HostId,
+            database.AboutInfos.FirstOrDefault(t => t.Id == schedule.HostId)?.VisualName ??
+            discord.Guild!.GetUser(schedule.HostId).DisplayName, schedule.Duration, schedule.At);
     }
 }
 

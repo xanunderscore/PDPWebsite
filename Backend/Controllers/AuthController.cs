@@ -1,14 +1,13 @@
-﻿using Discord;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 
 namespace PDPWebsite.Controllers;
 
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly RedisClient _rClient;
-    private readonly DiscordConnection _discord;
     private readonly EnvironmentContainer _container;
+    private readonly DiscordConnection _discord;
+    private readonly RedisClient _rClient;
 
     public AuthController(RedisClient rClient, EnvironmentContainer container, DiscordConnection discord)
     {
@@ -23,66 +22,44 @@ public class AuthController : ControllerBase
     {
         var user = _discord.Guild?.GetUser(userId);
         var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
-        if (user is null)
-        {
-            return Unauthorized();
-        }
+        if (user is null) return Unauthorized();
         var isAllowed = user.TryGetHighestRole(roles, out var role);
-        if (!isAllowed)
-        {
-            return Unauthorized();
-        }
+        if (!isAllowed) return Unauthorized();
         var token = Guid.NewGuid();
         var loginRecord = new Login(token, userId);
         _rClient.SetObj(token.ToString(), loginRecord);
         return Ok(UserReturn.FromUser(user, role, token.ToString()));
     }
 
-    [HttpGet, ServiceFilter(typeof(AuthFilter))]
+    [HttpGet]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("/api/auth/me")]
     public IActionResult Me()
     {
         var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
-        if (loginRecord is null)
-        {
-            return Unauthorized();
-        }
+        if (loginRecord is null) return Unauthorized();
         var user = _discord.Guild?.GetUser(loginRecord.DiscordId);
         var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
-        if (user is null)
-        {
-            return Unauthorized();
-        }
+        if (user is null) return Unauthorized();
         var isAllowed = user.TryGetHighestRole(roles, out var role);
-        if (!isAllowed)
-        {
-            return Unauthorized();
-        }
+        if (!isAllowed) return Unauthorized();
         return Ok(UserReturn.FromUser(user, role, token));
     }
 
-    [HttpPost, ServiceFilter(typeof(AuthFilter))]
+    [HttpPost]
+    [ServiceFilter(typeof(AuthFilter))]
     [Route("/api/auth/refresh")]
     public IActionResult Refresh()
     {
         var token = HttpContext.Request.Headers["Authorization"].ToString().Split(" ").Last();
         var loginRecord = _rClient.GetObj<Login>(token);
-        if (loginRecord is null)
-        {
-            return Unauthorized();
-        }
+        if (loginRecord is null) return Unauthorized();
         var user = _discord.Guild?.GetUser(loginRecord.DiscordId);
         var roles = _container.Get("DISCORD_ABOUT_ROLES").Split(',').Select(ulong.Parse).ToArray();
-        if (user is null)
-        {
-            return Unauthorized();
-        }
+        if (user is null) return Unauthorized();
         var isAllowed = user.TryGetHighestRole(roles, out var role);
-        if (!isAllowed)
-        {
-            return Unauthorized();
-        }
+        if (!isAllowed) return Unauthorized();
         _rClient.SetExpire(token, TimeSpan.FromDays(7));
         return Ok(UserReturn.FromUser(user, role, token));
     }
@@ -92,10 +69,7 @@ public class AuthController : ControllerBase
     public IActionResult Logout(string token)
     {
         var loginRecord = _rClient.GetObj<Login>(token);
-        if (loginRecord is null)
-        {
-            return Unauthorized();
-        }
+        if (loginRecord is null) return Unauthorized();
         _rClient.SetExpire(token, TimeSpan.Zero);
         return Ok();
     }

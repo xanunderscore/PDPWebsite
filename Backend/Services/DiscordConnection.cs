@@ -3,41 +3,30 @@ using System.Net.WebSockets;
 using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-using MSLogLevel = Microsoft.Extensions.Logging.LogLevel;
-using NLogLevel = NLog.LogLevel;
+using LogLevel = NLog.LogLevel;
 
 namespace PDPWebsite.Services;
 
 public partial class DiscordConnection : IAsyncDisposable
 {
-    public DiscordSocketClient DiscordClient { get; }
-    public SocketGuild? Guild { get; private set; }
+    private readonly CancellationTokenSource _cts = new();
+    private readonly EnvironmentContainer _environmentContainer;
+    private readonly ILogger<DiscordConnection> _logger;
+    private readonly IServiceProvider _provider;
+    private readonly RedisClient _redisClient;
+    private LogLevel _logLevel = LogLevel.Warn;
+    private Type[] _slashCommandProcessors = Array.Empty<Type>();
+    private SocketVoiceChannel _tempVoiceChannel = null!;
     public SocketTextChannel? LogChannel;
+
     /// <summary>
-    /// Key: VoiceChannelId
-    /// Value: UserId
+    ///     Key: VoiceChannelId
+    ///     Value: UserId
     /// </summary>
     public ConcurrentDictionary<ulong, ulong> TempChannels;
-    private readonly EnvironmentContainer _environmentContainer;
-    private readonly IServiceProvider _provider;
-    private readonly ILogger<DiscordConnection> _logger;
-    private readonly RedisClient _redisClient;
-    private readonly CancellationTokenSource _cts = new();
-    private Type[] _slashCommandProcessors = Array.Empty<Type>();
-    private NLogLevel _logLevel = NLogLevel.Warn;
-    private SocketVoiceChannel _tempVoiceChannel = null!;
-    private List<Game> Games { get; } = new()
-    {
-        new("Universalis", ActivityType.Watching),
-        new("with the market"),
-        new("with the economy"),
-        new("the schedule", ActivityType.Watching)
-    };
 
-    public static Action? OnReady { get; set; }
-    public static DiscordConnection? Instance { get; set; }
-
-    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer, RedisClient redisClient, IServiceProvider provider)
+    public DiscordConnection(ILogger<DiscordConnection> logger, EnvironmentContainer environmentContainer,
+        RedisClient redisClient, IServiceProvider provider)
     {
         DiscordClient = new DiscordSocketClient(new DiscordSocketConfig
         {
@@ -61,8 +50,33 @@ public partial class DiscordConnection : IAsyncDisposable
         _environmentContainer = environmentContainer;
         _provider = provider;
         _redisClient = redisClient;
-        TempChannels = _redisClient.GetObj<ConcurrentDictionary<ulong, ulong>>("discord_temp_channels") ?? new ConcurrentDictionary<ulong, ulong>();
+        TempChannels = _redisClient.GetObj<ConcurrentDictionary<ulong, ulong>>("discord_temp_channels") ??
+                       new ConcurrentDictionary<ulong, ulong>();
         Instance = this;
+    }
+
+    public DiscordSocketClient DiscordClient { get; }
+    public SocketGuild? Guild { get; private set; }
+
+    private List<Game> Games { get; } = new()
+    {
+        new Game("Universalis", ActivityType.Watching),
+        new Game("with the market"),
+        new Game("with the economy"),
+        new Game("the schedule", ActivityType.Watching)
+    };
+
+    public static Action? OnReady { get; set; }
+    public static DiscordConnection? Instance { get; set; }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DiscordClient.StopAsync();
+        await DiscordClient.LogoutAsync();
+        await DiscordClient.DisposeAsync();
+        _redisClient.SetObj("discord_temp_channels", TempChannels);
+        _cts.Cancel();
+        GC.SuppressFinalize(this);
     }
 
     public async Task Start()
@@ -76,18 +90,20 @@ public partial class DiscordConnection : IAsyncDisposable
 
     public Task Log(LogMessage arg)
     {
-        if (arg.Exception is WebSocketException or WebSocketClosedException or GatewayReconnectException || arg.Exception?.InnerException is WebSocketException or WebSocketClosedException or GatewayReconnectException)
+        if (arg.Exception is WebSocketException or WebSocketClosedException or GatewayReconnectException ||
+            arg.Exception?.InnerException is WebSocketException or WebSocketClosedException
+                or GatewayReconnectException)
             return Task.CompletedTask;
 
         _logger.Log(arg.Severity switch
         {
-            LogSeverity.Critical => MSLogLevel.Critical,
-            LogSeverity.Error => MSLogLevel.Error,
-            LogSeverity.Warning => MSLogLevel.Warning,
-            LogSeverity.Info => MSLogLevel.Information,
-            LogSeverity.Verbose => MSLogLevel.Trace,
-            LogSeverity.Debug => MSLogLevel.Debug,
-            _ => MSLogLevel.Information
+            LogSeverity.Critical => Microsoft.Extensions.Logging.LogLevel.Critical,
+            LogSeverity.Error => Microsoft.Extensions.Logging.LogLevel.Error,
+            LogSeverity.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
+            LogSeverity.Info => Microsoft.Extensions.Logging.LogLevel.Information,
+            LogSeverity.Verbose => Microsoft.Extensions.Logging.LogLevel.Trace,
+            LogSeverity.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
+            _ => Microsoft.Extensions.Logging.LogLevel.Information
         }, arg.Exception, arg.Message);
         return Task.CompletedTask;
     }
@@ -122,40 +138,37 @@ public partial class DiscordConnection : IAsyncDisposable
         SetActivity();
         CreateCommands();
 #pragma warning restore CS4014
-        LogChannel = (SocketTextChannel)await DiscordClient.GetChannelAsync(ulong.Parse(_environmentContainer.Get("DISCORD_LOG_CHANNEL")));
+        LogChannel =
+            (SocketTextChannel)await DiscordClient.GetChannelAsync(
+                ulong.Parse(_environmentContainer.Get("DISCORD_LOG_CHANNEL")));
         Guild = DiscordClient.GetGuild(ulong.Parse(_environmentContainer.Get("DISCORD_GUILD")));
-        _tempVoiceChannel = (SocketVoiceChannel)await DiscordClient.GetChannelAsync(ulong.Parse(_environmentContainer.Get("DISCORD_TEMP_VOICE")));
+        _tempVoiceChannel =
+            (SocketVoiceChannel)await DiscordClient.GetChannelAsync(
+                ulong.Parse(_environmentContainer.Get("DISCORD_TEMP_VOICE")));
         OnReady?.Invoke();
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await DiscordClient.StopAsync();
-        await DiscordClient.LogoutAsync();
-        await DiscordClient.DisposeAsync();
-        _redisClient.SetObj("discord_temp_channels", TempChannels);
-        _cts.Cancel();
-        GC.SuppressFinalize(this);
-    }
-
-    public bool ShouldLog(NLogLevel logEventLevel)
+    public bool ShouldLog(LogLevel logEventLevel)
     {
         return logEventLevel < _logLevel;
     }
 
-    public void SetLogLevel(MSLogLevel level)
+    public void SetLogLevel(Microsoft.Extensions.Logging.LogLevel level)
     {
         _logLevel = level switch
         {
-            MSLogLevel.Critical => _logLevel = NLogLevel.Fatal,
-            MSLogLevel.Error => _logLevel = NLogLevel.Error,
-            MSLogLevel.Warning => _logLevel = NLogLevel.Warn,
-            MSLogLevel.Information => _logLevel = NLogLevel.Info,
-            MSLogLevel.Debug => _logLevel = NLogLevel.Debug,
-            MSLogLevel.Trace => _logLevel = NLogLevel.Trace,
-            _ => _logLevel = NLogLevel.Info
+            Microsoft.Extensions.Logging.LogLevel.Critical => _logLevel = LogLevel.Fatal,
+            Microsoft.Extensions.Logging.LogLevel.Error => _logLevel = LogLevel.Error,
+            Microsoft.Extensions.Logging.LogLevel.Warning => _logLevel = LogLevel.Warn,
+            Microsoft.Extensions.Logging.LogLevel.Information => _logLevel = LogLevel.Info,
+            Microsoft.Extensions.Logging.LogLevel.Debug => _logLevel = LogLevel.Debug,
+            Microsoft.Extensions.Logging.LogLevel.Trace => _logLevel = LogLevel.Trace,
+            _ => _logLevel = LogLevel.Info
         };
     }
 
-    public NLogLevel GetLogLevel() => _logLevel;
+    public LogLevel GetLogLevel()
+    {
+        return _logLevel;
+    }
 }

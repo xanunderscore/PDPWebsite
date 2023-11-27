@@ -3,7 +3,8 @@ using Discord.WebSocket;
 
 namespace PDPWebsite.Discord;
 
-[SlashCommand("voice", "Temp Voice related commands"), AllowedChannel(1065927404238942259)]
+[SlashCommand("voice", "Temp Voice related commands")]
+[AllowedChannel(1065927404238942259)]
 public partial class Voice : ISlashCommandProcessor
 {
     private readonly SocketSlashCommand _arg;
@@ -18,7 +19,8 @@ public partial class Voice : ISlashCommandProcessor
     }
 }
 
-[SlashCommand("voice-debug", "Temp Voice Debug related commands", GuildPermission.ManageChannels), AllowedChannel(1065927404238942259)]
+[SlashCommand("voice-debug", "Temp Voice Debug related commands", GuildPermission.ManageChannels)]
+[AllowedChannel(1065927404238942259)]
 public partial class VoiceAdmin : ISlashCommandProcessor
 {
     private readonly SocketSlashCommand _arg;

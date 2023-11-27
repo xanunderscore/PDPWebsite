@@ -16,7 +16,8 @@ public record AboutInfo(ulong Id, string Description, string? VisualName)
     }
 }
 
-public record AboutInfoExtended(ulong Id, string Description, string RoleName, string RoleColor, string Avatar, string OriginalName, string? VisualName)
+public record AboutInfoExtended(ulong Id, string Description, string RoleName, string RoleColor, string Avatar,
+    string OriginalName, string? VisualName)
 {
     public static explicit operator AboutInfo(AboutInfoExtended aboutInfoExtended)
     {
@@ -25,6 +26,7 @@ public record AboutInfoExtended(ulong Id, string Description, string RoleName, s
 
     public static AboutInfoExtended FromInfo(AboutInfo aboutInfo, SocketGuildUser user, SocketRole role)
     {
-        return new AboutInfoExtended(aboutInfo.Id, aboutInfo.Description, role.Name, role.Color.ToString()!, user.GetAvatarUrl(), user.DisplayName, aboutInfo.VisualName);
+        return new AboutInfoExtended(aboutInfo.Id, aboutInfo.Description, role.Name, role.Color.ToString()!,
+            user.GetAvatarUrl(), user.DisplayName, aboutInfo.VisualName);
     }
 }

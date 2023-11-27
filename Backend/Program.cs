@@ -6,7 +6,8 @@ using NLog.Web;
 using PDPWebsite;
 using PDPWebsite.Hubs;
 
-var logger = LogManager.Setup().SetupExtensions(ext => ext.RegisterTarget<DiscordLogger>()).LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+var logger = LogManager.Setup().SetupExtensions(ext => ext.RegisterTarget<DiscordLogger>())
+    .LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("Starting up");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,7 +29,8 @@ builder.Services.AddSingleton<GameClient>();
 builder.Services.AddSingleton<DiscordConnection>();
 builder.Services.AddSingleton<RedisClient>();
 builder.Services.AddScoped<AuthFilter>();
-builder.Services.AddDbContext<Database>(conf => conf.UseNpgsql("Database=pdp;Username=postgres;Password=postgres;Host=localhost;"));
+builder.Services.AddDbContext<Database>(conf =>
+    conf.UseNpgsql("Database=pdp;Username=postgres;Password=postgres;Host=localhost;"));
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Version = "v1", Description = "PDPWebsite API surface" });
@@ -80,48 +82,51 @@ app.UseCors();
 app.UseMiddleware<CorsMiddleware>();
 app.UseMiddleware<OptionsMiddleware>();
 app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller}/{action=Index}/{id?}");
+    "default",
+    "{controller}/{action=Index}/{id?}");
 var discord = app.Services.GetRequiredService<DiscordConnection>();
 await discord.Start();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     await scope.ServiceProvider.GetRequiredService<Database>().Database.MigrateAsync();
 }
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 app.MapHub<MainHub>("/sigr");
 app.Run();
 
 LogManager.Shutdown();
 
-namespace PDPWebsite {
-public class UlongStringConverter : JsonConverter<ulong>
+namespace PDPWebsite
 {
-    public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public class UlongStringConverter : JsonConverter<ulong>
     {
-        return ulong.Parse(reader.GetString()!);
+        public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            return ulong.Parse(reader.GetString()!);
+        }
+
+        public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
     }
 
-    public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
+    public class TimeSpanStringConverter : JsonConverter<TimeSpan>
     {
-        writer.WriteStringValue(value.ToString());
-    }
-}
+        public override TimeSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            return TimeSpan.Parse(reader.GetString()!, new DateTimeFormatInfo { ShortTimePattern = "hh':'mm" });
+        }
 
-public class TimeSpanStringConverter : JsonConverter<TimeSpan>
-{
-    public override TimeSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        return TimeSpan.Parse(reader.GetString()!, new DateTimeFormatInfo { ShortTimePattern = "hh':'mm" });
+        public override void Write(Utf8JsonWriter writer, TimeSpan value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString("hh':'mm"));
+        }
     }
-
-    public override void Write(Utf8JsonWriter writer, TimeSpan value, JsonSerializerOptions options)
-    {
-        writer.WriteStringValue(value.ToString("hh':'mm"));
-    }
-}
 }

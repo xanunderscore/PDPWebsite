@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.WebSocket;
 using NLog.Targets;
 
 namespace PDPWebsite;
@@ -7,9 +6,8 @@ namespace PDPWebsite;
 [Target("Discord")]
 public class DiscordLogger : TargetWithLayout
 {
-    private static DiscordConnection? Connection => DiscordConnection.Instance;
-    private readonly Queue<LogEventInfo> _logQueue = new();
     private readonly Queue<Embed> _embeds = new();
+    private readonly Queue<LogEventInfo> _logQueue = new();
 
     public DiscordLogger()
     {
@@ -24,26 +22,19 @@ public class DiscordLogger : TargetWithLayout
                         _logQueue.Enqueue(logEvent);
                         continue;
                     }
+
                     Write(logEvent);
                 }
             });
             Task.Run(async () =>
             {
-                while (Connection?.LogChannel is null)
-                {
-                    await Task.Delay(1000);
-                }
+                while (Connection?.LogChannel is null) await Task.Delay(1000);
                 while (Connection.DiscordClient.LoginState == LoginState.LoggedIn)
                 {
                     while (Connection.DiscordClient.ConnectionState != ConnectionState.Connected)
-                    {
                         await Task.Delay(1000);
-                    }
                     var embeds = new List<Embed>();
-                    while (_embeds.TryDequeue(out var embed) && embeds.Count != 10)
-                    {
-                        embeds.Add(embed);
-                    }
+                    while (_embeds.TryDequeue(out var embed) && embeds.Count != 10) embeds.Add(embed);
                     if (embeds.Count <= 0)
                         continue;
                     await Connection.LogChannel.SendMessageAsync(embeds: embeds.ToArray());
@@ -52,6 +43,8 @@ public class DiscordLogger : TargetWithLayout
             });
         };
     }
+
+    private static DiscordConnection? Connection => DiscordConnection.Instance;
 
     private void WriteDiscord(LogEventInfo logEvent)
     {
@@ -79,8 +72,9 @@ public class DiscordLogger : TargetWithLayout
             _logQueue.Enqueue(logEvent);
             return;
         }
+
         if (Connection.ShouldLog(logEvent.Level))
-            return; 
+            return;
         WriteDiscord(logEvent);
     }
 }

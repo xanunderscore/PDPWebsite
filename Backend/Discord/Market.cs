@@ -1,21 +1,23 @@
-﻿using Discord;
-using SkiaSharp;
-using System.Text;
+﻿using System.Text;
+using Discord;
 using Discord.WebSocket;
+using SkiaSharp;
 
 namespace PDPWebsite.Discord;
 
-[SlashCommand("market", "Market related commands"), AllowedChannel(1065695099285155980)]
+[SlashCommand("market", "Market related commands")]
+[AllowedChannel(1065695099285155980)]
 public class Market : ISlashCommandProcessor
 {
-    private readonly UniversalisClient _universalisClient;
-    private readonly GameClient _gameClient;
-    private readonly ILogger<Market> _logger;
-    private readonly SocketSlashCommand _arg;
     private const string ItemCountLeft = "With %d more";
     private const string Gil = "<:gil:1077843055941533768>";
+    private readonly SocketSlashCommand _arg;
+    private readonly GameClient _gameClient;
+    private readonly ILogger<Market> _logger;
+    private readonly UniversalisClient _universalisClient;
 
-    public Market(UniversalisClient universalisClient, ILogger<Market> logger, GameClient gameClient, SocketSlashCommand arg)
+    public Market(UniversalisClient universalisClient, ILogger<Market> logger, GameClient gameClient,
+        SocketSlashCommand arg)
     {
         _universalisClient = universalisClient;
         _gameClient = gameClient;
@@ -24,7 +26,11 @@ public class Market : ISlashCommandProcessor
     }
 
     [SlashCommand("search", "Searches the market for an item")]
-    public async Task Search([SlashCommand("item", "The item to search for")] string item, [SlashCommand("server", "The server to search on")] string server, [SlashCommand("error-bars", "Shows error bars in the graph")] bool? errorBars)
+    public async Task Search([SlashCommand("item", "The item to search for")] string item,
+        [SlashCommand("server", "The server to search on")]
+        string server,
+        [SlashCommand("error-bars", "Shows error bars in the graph")]
+        bool? errorBars)
     {
         var worlds = await _universalisClient.GetWorlds();
         var datacenters = await _universalisClient.GetDatacenters();
@@ -36,19 +42,23 @@ public class Market : ISlashCommandProcessor
             names.Add(datacenter.Region);
             names.AddRange(datacenter.Worlds.Select(x => worlds.First(t => t.Id == x).Name));
         }
+
         _logger.LogTrace($"Trying with server: {server} and item: {item}");
         if (!names.Any(t => string.Equals(t, server, StringComparison.InvariantCultureIgnoreCase)))
         {
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not find server {server}");
             return;
         }
+
         server = names.First(t => string.Equals(t, server, StringComparison.InvariantCultureIgnoreCase));
-        var itemDatas = _gameClient.MarketItems.Where(t => t.Name.Contains(item!, StringComparison.InvariantCultureIgnoreCase)).ToList();
+        var itemDatas = _gameClient.MarketItems
+            .Where(t => t.Name.Contains(item!, StringComparison.InvariantCultureIgnoreCase)).ToList();
         if (!itemDatas.Any())
         {
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not find item {item}");
             return;
         }
+
         _logger.LogTrace($"Found server and item count {itemDatas.Count}");
         var builder = new EmbedBuilder();
         var sb = new StringBuilder();
@@ -70,11 +80,12 @@ public class Market : ISlashCommandProcessor
             });
             return;
         }
+
         _logger.LogTrace($"Found item {itemDatas[0].Name}");
         var itemData = itemDatas.First();
         var listing = await _universalisClient.GetListing(server, itemData.Id);
         var history = await _universalisClient.GetHistory(server, itemData.Id);
-        _logger.LogTrace($"Got listing and history");
+        _logger.LogTrace("Got listing and history");
         var priceHistory = history.GetPriceHistory();
         var hPlt = history.GetPlot(_gameClient.MarketItems, errorBars ?? false).GetImage(1100, 400);
         var mPlt = listing.GetPlot().GetImage(1100, 200);
@@ -104,7 +115,8 @@ public class Market : ISlashCommandProcessor
             foreach (var listingView in listing.Listings.Take(10))
             {
                 gil.AppendLine(listingView.PricePerUnit + Gil);
-                sb.AppendLine($"x{listingView.Quantity} {(!string.IsNullOrWhiteSpace(listingView.WorldName) ? $"[**{listingView.WorldName ?? server}**]" : "")}");
+                sb.AppendLine(
+                    $"x{listingView.Quantity} {(!string.IsNullOrWhiteSpace(listingView.WorldName) ? $"[**{listingView.WorldName ?? server}**]" : "")}");
                 total.AppendLine(listingView.Total + Gil);
             }
 
@@ -116,6 +128,7 @@ public class Market : ISlashCommandProcessor
         {
             builder.AddField("No listings", "No listings found for this item");
         }
+
         builder.WithImageUrl("attachment://plot.png");
         var attachments = new List<FileAttachment> { new(stream, "plot.png") };
         using var iconStream = new MemoryStream();
@@ -126,6 +139,7 @@ public class Market : ISlashCommandProcessor
             builder.WithThumbnailUrl("attachment://icon.png");
             attachments.Add(new FileAttachment(iconStream, "icon.png"));
         }
+
         _logger.LogTrace("Updating message with embed");
         await _arg.ModifyOriginalResponseAsync(msg =>
         {
@@ -142,11 +156,14 @@ public class Market : ISlashCommandProcessor
         var datacenters = await _universalisClient.GetDatacenters();
         if (!worlds.Any() || !datacenters.Any())
         {
-            await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not retrieve datacenters or worlds.");
+            await _arg.ModifyOriginalResponseAsync(msg => msg.Content = "Could not retrieve datacenters or worlds.");
             return;
         }
+
         _logger.LogTrace("Filtering worlds");
-        var serverMap = datacenters.Where(t => t.Worlds.Any(k => k < 1000)).Select(t => new { t.Name, t.Region, Worlds = t.Worlds.Select(k => worlds.First(j => j.Id == k)).ToArray() }).GroupBy(t => t.Region).ToArray();
+        var serverMap = datacenters.Where(t => t.Worlds.Any(k => k < 1000)).Select(t =>
+                new { t.Name, t.Region, Worlds = t.Worlds.Select(k => worlds.First(j => j.Id == k)).ToArray() })
+            .GroupBy(t => t.Region).ToArray();
         var sb = new StringBuilder();
         var embeds = new List<Embed>();
         foreach (var grouping in serverMap)
@@ -156,16 +173,15 @@ public class Market : ISlashCommandProcessor
             embed.WithColor(Color.Teal);
             foreach (var datacenter in grouping)
             {
-                foreach (var w in datacenter.Worlds)
-                {
-                    sb.AppendLine($"{w.Name}");
-                }
+                foreach (var w in datacenter.Worlds) sb.AppendLine($"{w.Name}");
 
                 embed.AddField(datacenter.Name, sb.ToString(), true);
                 sb.Clear();
             }
+
             embeds.Add(embed.Build());
         }
+
         _logger.LogTrace("Built datacenter embeds");
         await _arg.ModifyOriginalResponseAsync(msg =>
         {
@@ -180,7 +196,7 @@ public class Market : ISlashCommandProcessor
         var worlds = await _universalisClient.GetWorlds();
         if (!worlds.Any())
         {
-            await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not retrieve worlds.");
+            await _arg.ModifyOriginalResponseAsync(msg => msg.Content = "Could not retrieve worlds.");
             return;
         }
 
@@ -190,6 +206,7 @@ public class Market : ISlashCommandProcessor
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"No world exists of name: {server}");
             return;
         }
+
         var world = worlds.First(t => string.Equals(t.Name, server, StringComparison.InvariantCultureIgnoreCase));
         _logger.LogTrace($"Found server {world.Name}");
         var tax = await _universalisClient.GetTaxRates(world.Id);

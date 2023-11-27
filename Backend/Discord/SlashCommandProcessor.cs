@@ -10,10 +10,6 @@ public interface ISlashCommandProcessor
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Parameter)]
 public class SlashCommandAttribute : Attribute
 {
-    public string Name { get; }
-    public string Description { get; }
-    public GuildPermission? Permission { get; }
-
     public SlashCommandAttribute(string name)
     {
         Name = name;
@@ -31,6 +27,10 @@ public class SlashCommandAttribute : Attribute
         Permission = permission;
     }
 
+    public string Name { get; }
+    public string Description { get; }
+    public GuildPermission? Permission { get; }
+
     public void SetBuilder(SlashCommandBuilder builder)
     {
         builder.WithName(Name);
@@ -44,7 +44,7 @@ public class SlashCommandAttribute : Attribute
         builder.WithName(Name);
         if (!string.IsNullOrWhiteSpace(Description))
             builder.WithDescription(Description);
-        if(Permission.HasValue)
+        if (Permission.HasValue)
             throw new InvalidOperationException("Permission cannot be set on a sub command or argument");
     }
 }
@@ -52,26 +52,26 @@ public class SlashCommandAttribute : Attribute
 [AttributeUsage(AttributeTargets.Method)]
 public class ResponseTypeAttribute : Attribute
 {
-    public bool IsEphemeral { get; }
-    public bool IsTts { get; }
-
     public ResponseTypeAttribute(bool isEphemeral = false, bool isTts = false)
     {
         IsEphemeral = isEphemeral;
         IsTts = isTts;
     }
+
+    public bool IsEphemeral { get; }
+    public bool IsTts { get; }
 }
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public class AllowedChannelAttribute : Attribute
 {
-    public ulong ChannelId { get; }
-
     public AllowedChannelAttribute(ulong channelId)
     {
         ChannelId = channelId;
     }
-}   
+
+    public ulong ChannelId { get; }
+}
 
 public static class Extensions
 {
