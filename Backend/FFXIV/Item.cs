@@ -6,13 +6,13 @@ namespace PDPWebsite.FFXIV;
 
 public class Item
 {
-    public uint Id;
-    public string Singular;
-    public string Plural;
-    public string Name;
-    public ushort Icon;
+    public required uint Id { get; init; }
+    public required string Singular { get; init; }
+    public required string Plural { get; init; }
+    public required string Name { get; init; }
+    public required ushort Icon { get; init; }
 
-    private GameClient _gameData;
+    private readonly GameClient _gameData;
 
     public Item(GameClient gameClient)
     {

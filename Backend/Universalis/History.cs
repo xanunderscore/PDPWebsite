@@ -13,79 +13,79 @@ namespace PDPWebsite.Universalis
         /// The item ID.
         /// </summary>
         [JsonProperty("itemID")]
-        public int ItemId { get; init; }
+        public required int ItemId { get; init; }
 
         /// <summary>
         /// The world ID, if applicable.
         /// </summary>
         [JsonProperty("worldID")]
-        public int? WorldId { get; init; }
+        public required int? WorldId { get; init; }
 
         /// <summary>
         /// The last upload time for this endpoint, in milliseconds since the UNIX epoch.
         /// </summary>
         [JsonProperty("lastUploadTime")]
-        public long LastUploadTimeUnixMilliseconds { get; set; }
+        public required long LastUploadTimeUnixMilliseconds { get; set; }
 
         /// <summary>
         /// The historical sales.
         /// </summary>
         [JsonProperty("entries")]
-        public List<MinimizedSaleView> Sales { get; set; } = new();
+        public required List<MinimizedSaleView> Sales { get; set; } = new();
 
         /// <summary>
         /// The DC name, if applicable.
         /// </summary>
         [JsonProperty("dcName")]
-        public string DcName { get; init; }
+        public required string DcName { get; init; }
 
         /// <summary>
         /// The region name, if applicable.
         /// </summary>
         [JsonProperty("regionName")]
-        public string RegionName { get; init; }
+        public required string RegionName { get; init; }
 
         /// <summary>
         /// A map of quantities to sale counts, representing the number of sales of each quantity.
         /// </summary>
         [JsonProperty("stackSizeHistogram")]
-        public SortedDictionary<int, int> StackSizeHistogram { get; init; } = new();
+        public required SortedDictionary<int, int> StackSizeHistogram { get; init; } = new();
 
         /// <summary>
         /// A map of quantities to NQ sale counts, representing the number of sales of each quantity.
         /// </summary>
         [JsonProperty("stackSizeHistogramNQ")]
-        public SortedDictionary<int, int> StackSizeHistogramNq { get; init; } = new();
+        public required SortedDictionary<int, int> StackSizeHistogramNq { get; init; } = new();
 
         /// <summary>
         /// A map of quantities to HQ sale counts, representing the number of sales of each quantity.
         /// </summary>
         [JsonProperty("stackSizeHistogramHQ")]
-        public SortedDictionary<int, int> StackSizeHistogramHq { get; init; } = new();
+        public required SortedDictionary<int, int> StackSizeHistogramHq { get; init; } = new();
 
         /// <summary>
         /// The average number of sales per day, over the past seven days (or the entirety of the shown sales, whichever comes first).
         /// </summary>
         [JsonProperty("regularSaleVelocity")]
-        public float SaleVelocity { get; init; }
+        public required float SaleVelocity { get; init; }
 
         /// <summary>
         /// The average number of NQ sales per day, over the past seven days (or the entirety of the shown sales, whichever comes first).
         /// </summary>
         [JsonProperty("nqSaleVelocity")]
-        public float SaleVelocityNq { get; init; }
+        public required float SaleVelocityNq { get; init; }
 
         /// <summary>
         /// The average number of HQ sales per day, over the past seven days (or the entirety of the shown sales, whichever comes first).
         /// </summary>
         [JsonProperty("hqSaleVelocity")]
-        public float SaleVelocityHq { get; init; }
+        public required float SaleVelocityHq { get; init; }
 
         /// <summary>
         /// The world name, if applicable.
         /// </summary>
         [JsonProperty("worldName")]
-        public string WorldName { get; init; }
+        public required string WorldName { get; init; }
 
         public Plot GetPlot(IEnumerable<Item> items, bool errorBars = false)
         {
@@ -111,49 +111,49 @@ namespace PDPWebsite.Universalis
         /// Whether or not the item was high-quality.
         /// </summary>
         [JsonProperty("hq")]
-        public bool Hq { get; init; }
+        public required bool Hq { get; init; }
 
         /// <summary>
         /// The price per unit sold.
         /// </summary>
         [JsonProperty("pricePerUnit")]
-        public int PricePerUnit { get; init; }
+        public required int PricePerUnit { get; init; }
 
         /// <summary>
         /// The stack size sold.
         /// </summary>
         [JsonProperty("quantity")]
-        public int Quantity { get; init; }
+        public required int Quantity { get; init; }
 
         /// <summary>
         /// The buyer's character name. This may be null.
         /// </summary>
         [JsonProperty("buyerName")]
-        public string BuyerName { get; init; }
+        public required string BuyerName { get; init; }
 
         /// <summary>
         /// Whether or not this was purchased from a mannequin. This may be null.
         /// </summary>
         [JsonProperty("onMannequin")]
-        public bool? OnMannequin { get; init; }
+        public required bool? OnMannequin { get; init; }
 
         /// <summary>
         /// The sale time, in seconds since the UNIX epoch.
         /// </summary>
         [JsonProperty("timestamp")]
-        public long TimestampUnixSeconds { get; init; }
+        public required long TimestampUnixSeconds { get; init; }
 
         /// <summary>
         /// The world name, if applicable.
         /// </summary>
         [JsonProperty("worldName")]
-        public string WorldName { get; init; }
+        public required string WorldName { get; init; }
 
         /// <summary>
         /// The world ID, if applicable.
         /// </summary>
         [JsonProperty("worldID")]
-        public int? WorldId { get; init; }
+        public required int? WorldId { get; init; }
     }
 
     public class SanitizedSale
@@ -246,8 +246,11 @@ namespace PDPWebsite.Universalis
             return values.ToDictionary(key, value, EqualityComparer<TK>.Default).OrderBy(t => t.Key).ToDictionary(t => t.Key, t => t.Value);
         }
 
+        // will be using errorBars again once we figure out scottplot
+#pragma warning disable IDE0060
         public static void GetSalesPlot(this IEnumerable<ProcessedSale> sales, Plot plt, bool errorBars)
         {
+#pragma warning restore
             var avgSales = sales.ToDictionaryOrdered(sale => sale.Date.ToOADate(), sale => sale.AveragePrice);
             var avgSalesNq = sales.Where(sale => sale.AveragePriceNq.HasValue).ToDictionaryOrdered(sale => sale.Date.ToOADate(), sale => sale.AveragePriceNq!.Value);
             var avgSalesHq = sales.Where(sale => sale.AveragePriceHq.HasValue).ToDictionaryOrdered(sale => sale.Date.ToOADate(), sale => sale.AveragePriceHq!.Value);

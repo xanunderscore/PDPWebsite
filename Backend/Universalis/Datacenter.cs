@@ -1,26 +1,28 @@
-﻿using Newtonsoft.Json;
+﻿#pragma warning disable CA1507
+
+using Newtonsoft.Json;
 
 namespace PDPWebsite.Universalis
 {
     public record Datacenter
     {
         [JsonProperty("name")]
-        public string Name { get; init; }
+        public required string Name { get; init; }
 
         [JsonProperty("region")]
-        public string Region { get; init; }
+        public required string Region { get; init; }
 
         [JsonProperty("worlds")]
-        public int[] Worlds { get; init; }
+        public required int[] Worlds { get; init; }
     }
 
     public record World
     {
         [JsonProperty("id")]
-        public int Id { get; init; }
+        public required int Id { get; init; }
 
         [JsonProperty("name")]
-        public string Name { get; init; }
+        public required string Name { get; init; }
     }
 
     public record TaxRatesView

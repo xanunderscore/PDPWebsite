@@ -182,7 +182,7 @@ public partial class DiscordConnection
                             _ when typeSafe == typeof(SocketUser) => paramOption.Value,
                             _ when typeSafe == typeof(SocketChannel) => paramOption.Value,
                             _ when typeSafe == typeof(Attachment) => paramOption.Value,
-                            _ => throw new ArgumentOutOfRangeException(nameof(typeSafe), typeSafe, $"Could not match type with {typeSafe.Name}")
+                            _ => throw new ArgumentOutOfRangeException(typeSafe.Name, typeSafe, $"Could not match type with {typeSafe.Name}")
                         })!);
                     }
                 }

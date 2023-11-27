@@ -95,10 +95,10 @@ if (app.Environment.IsDevelopment())
 }
 app.MapHub<MainHub>("/sigr");
 app.Run();
-discord.Dispose();
 
 LogManager.Shutdown();
 
+namespace PDPWebsite {
 public class UlongStringConverter : JsonConverter<ulong>
 {
     public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -123,4 +123,5 @@ public class TimeSpanStringConverter : JsonConverter<TimeSpan>
     {
         writer.WriteStringValue(value.ToString("hh':'mm"));
     }
+}
 }

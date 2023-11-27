@@ -6,14 +6,9 @@ namespace PDPWebsite.Services;
 
 public class RedisClient
 {
-    private ILogger<RedisClient> _logger;
+    public RedisClient() {}
 
-    public RedisClient(ILogger<RedisClient> logger)
-    {
-        _logger = logger;
-    }
-
-    private static TimeSpan expireConstant = new(7, 0, 0, 0);
+    private static readonly TimeSpan ExpireConstant = new(7, 0, 0, 0);
 
     public ConnectionMultiplexer Connection { get; set; } = ConnectionMultiplexer.Connect("localhost");
 
@@ -29,7 +24,7 @@ public class RedisClient
     {
         var db = GetDatabase();
         db.StringSet(key, value);
-        db.KeyExpire(key, expire ?? DateTime.Now.Add(expireConstant));
+        db.KeyExpire(key, expire ?? DateTime.Now.Add(ExpireConstant));
     }
 
     public T? GetObj<T>(string key)

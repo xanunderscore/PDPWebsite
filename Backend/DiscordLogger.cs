@@ -7,9 +7,9 @@ namespace PDPWebsite;
 [Target("Discord")]
 public class DiscordLogger : TargetWithLayout
 {
-    private DiscordConnection? Connection => DiscordConnection.Instance;
-    private Queue<LogEventInfo> _logQueue = new();
-    private Queue<Embed> _embeds = new();
+    private static DiscordConnection? Connection => DiscordConnection.Instance;
+    private readonly Queue<LogEventInfo> _logQueue = new();
+    private readonly Queue<Embed> _embeds = new();
 
     public DiscordLogger()
     {

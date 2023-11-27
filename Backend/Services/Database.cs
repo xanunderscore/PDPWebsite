@@ -4,10 +4,10 @@ namespace PDPWebsite.Services;
 
 public class Database : DbContext
 {
-    public Database(DbContextOptions<Database> options) : base(options)
-    {
-
-    }
+    // initialized by dbcontext
+#pragma warning disable CS8618
+    public Database(DbContextOptions<Database> options) : base(options) { }
+#pragma warning restore
 
     public DbSet<Schedule> Schedules { get; set; }
     public DbSet<SignUp> Signups { get; set; }

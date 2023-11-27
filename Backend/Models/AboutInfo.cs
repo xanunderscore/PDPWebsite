@@ -8,11 +8,11 @@ public record AboutInfo(ulong Id, string Description, string? VisualName)
     public string Description { get; set; } = Description;
     public string? VisualName { get; set; } = VisualName;
 
-    public void Deconstruct(out ulong Id, out string Description, out string? VisualName)
+    public void Deconstruct(out ulong id, out string description, out string? visualName)
     {
-        Id = this.Id;
-        Description = this.Description;
-        VisualName = this.VisualName;
+        id = Id;
+        description = Description;
+        visualName = VisualName;
     }
 }
 

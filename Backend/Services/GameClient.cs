@@ -11,7 +11,7 @@ public class GameClient : IDisposable
     private readonly GameData _gameData;
     private readonly UniversalisClient _client;
 
-    private List<Item> _marketItems = new();
+    private readonly List<Item> _marketItems = new();
     public IReadOnlyList<Item> MarketItems => _marketItems;
 
     public GameClient(UniversalisClient client)
@@ -58,5 +58,6 @@ public class GameClient : IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
     }
 }

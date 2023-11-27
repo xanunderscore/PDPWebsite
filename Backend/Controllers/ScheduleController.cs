@@ -17,9 +17,9 @@ public class ScheduleController : ControllerBase
         _hub = hub;
     }
 
-    private DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
+    private static DateTimeOffset GetThisWeek() => TimeZoneInfo.ConvertTime((DateTimeOffset)DateTimeOffset.UtcNow.UtcDateTime, TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
 
-    private Tuple<DateTimeOffset, DateTimeOffset> GetWeek(bool nextWeek = false)
+    private static Tuple<DateTimeOffset, DateTimeOffset> GetWeek(bool nextWeek = false)
     {
         var first = GetThisWeek();
         first = first.DayOfWeek switch

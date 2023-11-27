@@ -13,10 +13,19 @@ namespace PDPWebsite.Services
         private readonly ConcurrentDictionary<int, Tuple<TaxRatesView, DateTime>> _taxRatesCache = new();
         private readonly ConcurrentDictionary<string, Tuple<Listing, DateTime>> _listingsCache = new();
         private readonly ConcurrentDictionary<string, Tuple<History, DateTime>> _historiesCache = new();
-        private Tuple<World[], DateTime> _worldsCache;
-        private Tuple<Datacenter[], DateTime> _datacentersCache;
+        private Tuple<World[], DateTime>? _worldsCache;
+        private Tuple<Datacenter[], DateTime>? _datacentersCache;
 
-        public UniversalisClient()
+        public static async Task<UniversalisClient> Init() {
+            var client = new UniversalisClient();
+            await client.GetDatacenters();
+            foreach (var world in await client.GetWorlds()) {
+                await client.GetTaxRates(world.Id);
+            }
+            return client;
+        }
+
+        private UniversalisClient()
         {
             BaseAddress = new Uri("https://universalis.app/api/v2");
             var assembly = Assembly.GetExecutingAssembly();
@@ -25,14 +34,6 @@ namespace PDPWebsite.Services
             foreach (var productHeader in new[] { new ProductInfoHeaderValue("WildWolfUniversalisBot", version?.InformationalVersion ?? "0.0.0"), new ProductInfoHeaderValue(".NET", netVersion?.FrameworkDisplayName?.Split(' ')[1]), new ProductInfoHeaderValue("CoreCLR", assembly.ImageRuntimeVersion) })
             {
                 DefaultRequestHeaders.UserAgent.Add(productHeader);
-            }
-
-            GetDatacenters().GetAwaiter().GetResult();
-            foreach (var world in GetWorlds().Result)
-            {
-#pragma warning disable CS4014
-                GetTaxRates(world.Id);
-#pragma warning restore CS4014
             }
         }
 

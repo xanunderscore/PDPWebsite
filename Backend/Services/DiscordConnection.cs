@@ -8,7 +8,7 @@ using NLogLevel = NLog.LogLevel;
 
 namespace PDPWebsite.Services;
 
-public partial class DiscordConnection : IDisposable
+public partial class DiscordConnection : IAsyncDisposable
 {
     public DiscordSocketClient DiscordClient { get; }
     public SocketGuild? Guild { get; private set; }
@@ -128,18 +128,14 @@ public partial class DiscordConnection : IDisposable
         OnReady?.Invoke();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await DiscordClient.StopAsync();
         await DiscordClient.LogoutAsync();
         await DiscordClient.DisposeAsync();
         _redisClient.SetObj("discord_temp_channels", TempChannels);
         _cts.Cancel();
-    }
-
-    public void Dispose()
-    {
-        DisposeAsync().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
     }
 
     public bool ShouldLog(NLogLevel logEventLevel)

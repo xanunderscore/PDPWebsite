@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 
 namespace PDPWebsite.Services;
 
-static partial class DiscordExtensions
+public static partial class DiscordExtensions
 {
-    public static Regex CapitalLetters = CapitalLettersGenerator();
+    private static Regex _capitalLetters = CapitalLettersGenerator();
 
     public static async Task DownloadAllImages(this DiscordSocketClient client, ulong id)
     {
@@ -72,7 +72,7 @@ static partial class DiscordExtensions
 
     public static string SanitizeName(this string value)
     {
-        var matches = CapitalLetters.Matches(value);
+        var matches = _capitalLetters.Matches(value);
         for (var index = 0; index < matches.Count; index++)
         {
             var match = matches[index];
