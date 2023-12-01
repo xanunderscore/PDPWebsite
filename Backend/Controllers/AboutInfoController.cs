@@ -58,7 +58,8 @@ public class AboutInfoController : ControllerBase
         var users = GetDiscordUsers();
         return Ok(users.Select(t => new
         {
-            t.Id, Name = aboutInfo.FirstOrDefault(f => f.Id == t.Id)?.VisualName ?? t.DisplayName,
+            t.Id,
+            Name = aboutInfo.FirstOrDefault(f => f.Id == t.Id)?.VisualName ?? t.DisplayName,
             Avatar = t.GetDisplayAvatarUrl()
         }));
     }

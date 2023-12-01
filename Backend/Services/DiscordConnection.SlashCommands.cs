@@ -106,14 +106,14 @@ public partial class DiscordConnection
             }
 
             commandBuilders.Add(slashCommandBuiler);
-            enumEscape: ;
+enumEscape:;
         }
 
         try
         {
             foreach (var discordClientGuild in DiscordClient.Guilds)
-            foreach (var commandBuilder in commandBuilders)
-                await DiscordClient.Rest.CreateGuildCommand(commandBuilder.Build(), discordClientGuild.Id);
+                foreach (var commandBuilder in commandBuilders)
+                    await DiscordClient.Rest.CreateGuildCommand(commandBuilder.Build(), discordClientGuild.Id);
         }
         catch (HttpException exception)
         {
@@ -161,37 +161,37 @@ public partial class DiscordConnection
             var parameters = method.GetParameters();
             var paramsOptions = arg.Data.Options.First().Options;
             foreach (var parameter in parameters)
-            foreach (var paramOption in paramsOptions)
-                if (parameter.IsSameCommand(paramOption.Name))
-                {
-                    var typeSafe = Nullable.GetUnderlyingType(parameter.ParameterType) ?? parameter.ParameterType;
-                    args.Add((typeSafe switch
+                foreach (var paramOption in paramsOptions)
+                    if (parameter.IsSameCommand(paramOption.Name))
                     {
-                        { IsEnum: true } => Enum.GetValues(typeSafe).GetValue(Convert.ToInt32(paramOption.Value)),
-                        _ when typeSafe == typeof(string) => paramOption.Value,
-                        _ when typeSafe == typeof(bool) => paramOption.Value,
-                        _ when typeSafe == typeof(int) => Convert.ToInt32(paramOption.Value),
-                        _ when typeSafe == typeof(ulong) => Convert.ToUInt64(paramOption.Value),
-                        _ when typeSafe == typeof(long) => paramOption.Value,
-                        _ when typeSafe == typeof(uint) => Convert.ToUInt32(paramOption.Value),
-                        _ when typeSafe == typeof(short) => Convert.ToInt16(paramOption.Value),
-                        _ when typeSafe == typeof(ushort) => Convert.ToUInt16(paramOption.Value),
-                        _ when typeSafe == typeof(byte) => Convert.ToByte(paramOption.Value),
-                        _ when typeSafe == typeof(sbyte) => Convert.ToSByte(paramOption.Value),
-                        _ when typeSafe == typeof(double) => paramOption.Value,
-                        _ when typeSafe == typeof(float) => paramOption.Value,
-                        _ when typeSafe == typeof(decimal) => paramOption.Value,
-                        _ when typeSafe == typeof(DateTime) => DateTime.Parse((string)paramOption.Value),
-                        _ when typeSafe == typeof(DateTimeOffset) => DateTimeOffset.Parse((string)paramOption.Value),
-                        _ when typeSafe == typeof(TimeSpan) => TimeSpan.Parse((string)paramOption.Value),
-                        _ when typeSafe == typeof(SocketRole) => paramOption.Value,
-                        _ when typeSafe == typeof(SocketUser) => paramOption.Value,
-                        _ when typeSafe == typeof(SocketChannel) => paramOption.Value,
-                        _ when typeSafe == typeof(Attachment) => paramOption.Value,
-                        _ => throw new ArgumentOutOfRangeException(typeSafe.Name, typeSafe,
-                            $"Could not match type with {typeSafe.Name}")
-                    })!);
-                }
+                        var typeSafe = Nullable.GetUnderlyingType(parameter.ParameterType) ?? parameter.ParameterType;
+                        args.Add((typeSafe switch
+                        {
+                            { IsEnum: true } => Enum.GetValues(typeSafe).GetValue(Convert.ToInt32(paramOption.Value)),
+                            _ when typeSafe == typeof(string) => paramOption.Value,
+                            _ when typeSafe == typeof(bool) => paramOption.Value,
+                            _ when typeSafe == typeof(int) => Convert.ToInt32(paramOption.Value),
+                            _ when typeSafe == typeof(ulong) => Convert.ToUInt64(paramOption.Value),
+                            _ when typeSafe == typeof(long) => paramOption.Value,
+                            _ when typeSafe == typeof(uint) => Convert.ToUInt32(paramOption.Value),
+                            _ when typeSafe == typeof(short) => Convert.ToInt16(paramOption.Value),
+                            _ when typeSafe == typeof(ushort) => Convert.ToUInt16(paramOption.Value),
+                            _ when typeSafe == typeof(byte) => Convert.ToByte(paramOption.Value),
+                            _ when typeSafe == typeof(sbyte) => Convert.ToSByte(paramOption.Value),
+                            _ when typeSafe == typeof(double) => paramOption.Value,
+                            _ when typeSafe == typeof(float) => paramOption.Value,
+                            _ when typeSafe == typeof(decimal) => paramOption.Value,
+                            _ when typeSafe == typeof(DateTime) => DateTime.Parse((string)paramOption.Value),
+                            _ when typeSafe == typeof(DateTimeOffset) => DateTimeOffset.Parse((string)paramOption.Value),
+                            _ when typeSafe == typeof(TimeSpan) => TimeSpan.Parse((string)paramOption.Value),
+                            _ when typeSafe == typeof(SocketRole) => paramOption.Value,
+                            _ when typeSafe == typeof(SocketUser) => paramOption.Value,
+                            _ when typeSafe == typeof(SocketChannel) => paramOption.Value,
+                            _ when typeSafe == typeof(Attachment) => paramOption.Value,
+                            _ => throw new ArgumentOutOfRangeException(typeSafe.Name, typeSafe,
+                                $"Could not match type with {typeSafe.Name}")
+                        })!);
+                    }
 
             while (args.Count != parameters.Length)
                 args.Add(null!);

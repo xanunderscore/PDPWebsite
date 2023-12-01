@@ -15,7 +15,7 @@ namespace PDPWebsite.Migrations
                 name: "Schedules",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql:"gen_random_uuid()"),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     Name = table.Column<string>(type: "text", nullable: false),
                     HostId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     Duration = table.Column<TimeSpan>(type: "interval", nullable: false),
