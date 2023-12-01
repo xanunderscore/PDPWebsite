@@ -43,7 +43,7 @@ public class Market : ISlashCommandProcessor
             names.AddRange(datacenter.Worlds.Select(x => worlds.First(t => t.Id == x).Name));
         }
 
-        _logger.LogTrace($"Trying with server: {server} and item: {item}");
+        _logger.LogTrace("Trying with server: {server} and item: {item}", server, item);
         if (!names.Any(t => string.Equals(t, server, StringComparison.InvariantCultureIgnoreCase)))
         {
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"Could not find server {server}");
@@ -59,7 +59,7 @@ public class Market : ISlashCommandProcessor
             return;
         }
 
-        _logger.LogTrace($"Found server and item count {itemDatas.Count}");
+        _logger.LogTrace("Found server and item count {count}", itemDatas.Count);
         var builder = new EmbedBuilder();
         var sb = new StringBuilder();
         if (itemDatas.Count > 1)
@@ -81,7 +81,7 @@ public class Market : ISlashCommandProcessor
             return;
         }
 
-        _logger.LogTrace($"Found item {itemDatas[0].Name}");
+        _logger.LogTrace("Found item {name}", itemDatas[0].Name);
         var itemData = itemDatas.First();
         var listing = await _universalisClient.GetListing(server, itemData.Id);
         var history = await _universalisClient.GetHistory(server, itemData.Id);
@@ -200,7 +200,7 @@ public class Market : ISlashCommandProcessor
             return;
         }
 
-        _logger.LogTrace($"Trying with server {server}");
+        _logger.LogTrace("Trying with server {server}", server);
         if (!worlds.Any(t => string.Equals(t.Name, server, StringComparison.InvariantCultureIgnoreCase)))
         {
             await _arg.ModifyOriginalResponseAsync(msg => msg.Content = $"No world exists of name: {server}");
@@ -208,9 +208,9 @@ public class Market : ISlashCommandProcessor
         }
 
         var world = worlds.First(t => string.Equals(t.Name, server, StringComparison.InvariantCultureIgnoreCase));
-        _logger.LogTrace($"Found server {world.Name}");
+        _logger.LogTrace("Found server {name}", world.Name);
         var tax = await _universalisClient.GetTaxRates(world.Id);
-        _logger.LogTrace($"Got tax data: {tax}");
+        _logger.LogTrace("Got tax data: {tax}", tax);
         var embedBuilder = new EmbedBuilder();
         embedBuilder.WithTitle($"Market tax rates for: {world.Name}");
         embedBuilder.AddField("Limsa Lominsa", $"{tax.LimsaLominsa}%", true);

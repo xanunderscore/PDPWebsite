@@ -89,7 +89,8 @@ public partial class DiscordConnection
                         if (values.Length > 25)
                         {
                             _logger.LogError(
-                                $"Enum {paramType.Name} has more than 25 values, this is not supported by discord.");
+                                "Enum {name} has more than 25 values, this is not supported by discord.",
+                                paramType.Name);
                             goto enumEscape;
                         }
 
@@ -203,7 +204,8 @@ public partial class DiscordConnection
         catch (Exception e)
         {
             _logger.LogError(e,
-                $"SlashCommandExecuted failed while executing: `/{command} {subCommand}` with args: {string.Join(", ", args.Select(t => t.ToString()))}");
+                "SlashCommandExecuted failed while executing: `/{command} {subCommand}` with args: {args}", command,
+                subCommand, string.Join(", ", args.Select(t => t.ToString())));
         }
     }
 }

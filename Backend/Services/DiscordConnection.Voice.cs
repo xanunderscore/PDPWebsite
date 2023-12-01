@@ -12,11 +12,11 @@ public partial class DiscordConnection
         {
             if (before.VoiceChannel == after.VoiceChannel)
                 return;
-            _logger.LogTrace($"UserVoiceStateUpdated: {user}, {before}, {after}");
+            _logger.LogTrace("UserVoiceStateUpdated: {user}, {before}, {after}", user, before, after);
             if (before.VoiceChannel != null &&
                 (after.VoiceChannel == null || before.VoiceChannel.Id != after.VoiceChannel.Id))
             {
-                _logger.LogTrace($"User: {user} disconnected from voice channel {before}");
+                _logger.LogTrace("User: {user} disconnected from voice channel {before}", user, before);
                 if (before.VoiceChannel.ConnectedUsers.Count == 0 && TempChannels.ContainsKey(before.VoiceChannel.Id))
                 {
                     _logger.LogTrace("This was the last user that left a temp channel");
@@ -28,7 +28,8 @@ public partial class DiscordConnection
                 {
                     _logger.LogTrace("This was not the last user that left a temp channel");
                     _logger.LogTrace(
-                        $"Users discovered: {string.Join(", ", before.VoiceChannel.ConnectedUsers.Select(t => t.ToString()))}");
+                        "Users discovered: {users}",
+                        string.Join(", ", before.VoiceChannel.ConnectedUsers.Select(t => t.ToString())));
                 }
                 else if (!TempChannels.ContainsKey(before.VoiceChannel.Id))
                 {
@@ -38,7 +39,7 @@ public partial class DiscordConnection
 
             if (after.VoiceChannel?.Id == _tempVoiceChannel.Id)
             {
-                _logger.LogTrace($"User: {user} connected to temp voice setup.");
+                _logger.LogTrace("User: {user} connected to temp voice setup.", user);
                 var names = _redisClient.GetObj<Dictionary<ulong, string>>("voice_names");
                 if (names == null || !names.TryGetValue(user.Id, out var name))
                     name = user.Username;

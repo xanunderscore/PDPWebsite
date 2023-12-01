@@ -104,7 +104,7 @@ public partial class DiscordConnection : IAsyncDisposable
             LogSeverity.Verbose => Microsoft.Extensions.Logging.LogLevel.Trace,
             LogSeverity.Debug => Microsoft.Extensions.Logging.LogLevel.Debug,
             _ => Microsoft.Extensions.Logging.LogLevel.Information
-        }, arg.Exception, arg.Message);
+        }, arg.Exception, "{message}", arg.Message);
         return Task.CompletedTask;
     }
 

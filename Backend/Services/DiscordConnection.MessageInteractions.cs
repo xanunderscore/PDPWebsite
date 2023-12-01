@@ -7,7 +7,7 @@ public partial class DiscordConnection
 {
     private async Task DiscordClientOnModalSubmitted(SocketModal arg)
     {
-        _logger.LogTrace($"DiscordClientOnModalSubmitted: {arg}");
+        _logger.LogTrace("DiscordClientOnModalSubmitted: {arg}", arg);
         var user = (SocketGuildUser)arg.User;
         var channel = user.VoiceChannel;
         ulong ownerId;
@@ -50,7 +50,7 @@ public partial class DiscordConnection
 
     private async Task MessageInteractionExecuted(SocketMessageComponent arg)
     {
-        _logger.LogTrace($"MessageInteractionExecuted: {arg.Data.CustomId}");
+        _logger.LogTrace("MessageInteractionExecuted: {customId}", arg.Data.CustomId);
         var user = (SocketGuildUser)arg.User;
         var channel = user.VoiceChannel;
         ulong ownerId;
